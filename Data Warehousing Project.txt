@@ -1,0 +1,1333 @@
+====================================================================
+NOTES: SQL PROJECT CATEGORIES & WORKFLOWS
+====================================================================
+
+When building SQL projects, they generally fall into three distinct 
+categories based on their primary objective and the technical skills 
+involved.
+
+1. DATA WAREHOUSING
+   * Core Goal: "Organize, Structure, Prepare"
+   * Key Tasks & Concepts:
+     - ETL/ELT Processing
+     - Data Architecture
+     - Data Integration
+     - Data Cleansing
+     - Data Load
+     - Data Modeling
+
+2. EXPLORATORY DATA ANALYSIS (EDA)
+   * Core Goal: "Understand Data"
+   * Key Tasks & Concepts:
+     - Basic Queries
+     - Data Profiling
+     - Simple Aggregations
+     - Subquery
+
+3. ADVANCED DATA ANALYTICS
+   * Core Goal: "Answer Business Questions"
+   * Key Tasks & Concepts:
+     - Complex Queries
+     - Window Functions
+     - CTE (Common Table Expressions)
+     - Subqueries
+     - Reports
+====================================================================
+
+DATA WAREHOUSING PROJECT NOTES
+
+1. What is a Data Warehouse?
+-> According to Bill Inmon (the father of data warehousing): "A data warehouse is a subject-oriented, integrated, time-variant, and non-volatile collection of data in support of management's decision-making process."
+
+- Subject-oriented: This means the data warehouse is always focused on a specific business   area, like sales, customers, finance, and so on.
+- Integrated: It pulls in and integrates data from multiple different source systems.
+- Time-variant: This means you can keep and analyze historical data inside it.
+- Non-volatile: This means the data is rarely updated or modified once it is loaded.
+
+---------------------------------------------------------
+SCENARIO: Why Manual ETL is a Problem 
+
+Let's say we have one system, and one Data Analyst is manually performing ETL on the data. This process can take weeks (as seen in the image, where multiple analysts are doing the same manual work). As a result, end-users consume multiple reports reflecting different states of the data: one report might be 40 days old, another 10 days old, and a third Power BI report might be 5 days old. 
+
+It becomes very hard to make real, accurate business decisions based on these inconsistent reports. This manual process is always slow and prone to human error, and errors in reports lead to bad business decisions. 
+
+Another major issue is handling Big Data. If the data volume is very large, it becomes extremely difficult for data analysts to handle it manually; in some cases, it might be impossible for them to extract the data at all. Furthermore, if an end-user asks for an integrated report from multiple sources, merging all that data manually is chaotic, time-consuming, and full of risk. This is exactly what happens in companies working without proper data management systems (like a Data Lake, Data Warehouse, or Data Lakehouse).
+
+---------------------------------------------------------
+THE SOLUTION: The Data Warehouse (DWH) Approach
+
+In the case of a Data Warehouse, the data team no longer collects data manually. Instead, we use an automated ETL (Extract, Transform, Load) pipeline that dumps the data into the DWH. The DWH becomes a "Single Point of Truth," and all your reports will consume data from this single source.
+
+Now, we can easily generate reports based on multiple data sources because the whole process is completely automated. This automation removes human error and makes data retrieval incredibly fast. We can customize the DWH as per our needs and easily store historical data. Because of this centralized system, all reports will have the exact same status (e.g., all reflecting data from 1 day ago). Additionally, a DWH is built to handle Big Data efficiently.
+
+Role Breakdown:
+- Data Engineer: Usually the person who builds the DWH. They access the source systems, script the ETL pipelines, and build the infrastructure.
+- Data Analyst: The person responsible for creating the reports and dashboards using the DWH.
+
+This structured approach is exactly why modern data management is essential.
+
+---------------------------------------------------------
+ANALOGY: The Data Warehouse as a Busy Restaurant 
+
+A Data Warehouse can be seen as a busy restaurant. Every day, suppliers bring in fresh, raw ingredients (spices, meat, vegetables, etc.). The chefs don't just throw everything into one pot. First, they clean, chop, and organize everything, storing each ingredient in the right place (like a freezer or prepped containers). This is the "preparation phase" (similar to the ETL process).
+
+When an order comes in from a customer, the chefs quickly grab the pre-prepared ingredients to create a perfect dish and serve it to the customer. This process is exactly like how a Data Warehouse works: raw data is cleaned, structured, and stored properly so that when a business user "orders" a report, it can be served up quickly and accurately.
+
+================================================================================
+DATA WAREHOUSING PROJECT NOTES: UNDERSTANDING ETL
+================================================================================
+
+1. WHAT IS ETL (Extract, Transform, Load)?
+--------------------------------------------------------------------------------
+Data exists in source systems, and the goal of ETL is to move it from the source to a target system (such as a Data Warehouse). In this context, "source" and "target" typically refer to database tables. 
+
+The ETL process involves three main phases:
+*   EXTRACT: The first task is to specify which data to pull from the source. For example, using an "incremental load," we specify that we are only extracting a specific, recent subset of the data rather than the entire database.
+*   TRANSFORM: Once extracted, we change the shape and structure of the data. This is the most resource-intensive step. It involves heavy processing tasks such as data cleansing, data integration, formatting, and data normalization. 
+*   LOAD: Finally, we take this new, cleaned data and insert it into the target system (the Data Warehouse).
+
+2. MULTI-LAYER ARCHITECTURE IN REAL PROJECTS
+--------------------------------------------------------------------------------
+In real-world projects, the architecture is rarely as simple as a single source and a single target. Depending on the design (whether building a Data Warehouse, Data Lake, or Data Lakehouse), the architecture will feature multiple layers. 
+
+To move data from one layer to another, the full ETL process is not always required. You can use just one or two of the E, T, or L steps depending on the specific needs of that layer.
+
+3. EXPLAINING THE LAYERED PROCESS FLOW
+--------------------------------------------------------------------------------
+Architecture Flow: 
+Source -> Direct Load -> Layer 1 -> ETL -> Layer 2 -> TL -> Layer 3 -> L -> Layer 4
+
+Breakdown of the flow:
+*   Source -> Direct Load -> Layer 1: Data is directly extracted from the source and loaded into the first layer (often called the raw or staging layer) with little to no transformation.
+*   Layer 1 -> ETL -> Layer 2: The full Extract, Transform, and Load process is applied to move data from the raw layer to a structured layer, cleaning and normalizing it.
+*   Layer 2 -> TL (Transform, Load) -> Layer 3: Since the data is already inside the system, a full "Extract" is unnecessary. The data is simply transformed further (e.g., aggregated for business logic) and loaded into the next layer.
+*   Layer 3 -> L (Load) -> Layer 4: The data is already fully processed and shaped. It just needs to be loaded (moved or copied) into the final reporting or presentation layer for end-users and data analysts to consume.
+
+Key Takeaway: You do not have to execute the entire Extract, Transform, and Load sequence between every single layer. You can modularize the steps (using just TL or L) based on the exact requirements of the data pipeline.
+================================================================================
+
+================================================================================
+PART 3: DEEP DIVE INTO ETL - EXTRACTION, TRANSFORMATION, AND LOADING
+================================================================================
+
+================================================================================
+1.0. EXTRACTION METHODS
+================================================================================
+Definition: Extraction is the first step of ETL. It means getting the data out 
+of the source system and bringing it into the data pipeline.
+
+There are two main ways to extract data:
+
+    a. Pull Extraction
+       -  The DWH system goes to the source system and pulls (fetches) the 
+          data from it.
+       -  Think of it like YOU going to the store to pick up groceries.
+       -  The DWH decides WHEN to extract and WHAT to extract.
+       -  Example: A scheduled job runs every night at 2 AM, connects to the 
+          source database, and pulls the latest sales data.
+
+    b. Push Extraction
+       -  The source system pushes (sends) the data to the DWH on its own.
+       -  Think of it like getting groceries DELIVERED to your door.
+       -  The source system decides WHEN to send the data.
+       -  Example: An ERP system automatically exports a CSV file to a shared 
+          folder every time a new batch of orders is processed.
+
+--------------------------------------------------------------------------------
+1.1. EXTRACTION TYPES
+--------------------------------------------------------------------------------
+These define HOW MUCH data we extract each time.
+
+    a. Full Extraction
+       -  We extract ALL the data from the source system and write it to the 
+          DWH every single time.
+       -  It does not matter if the data already exists in the DWH; we grab 
+          everything again.
+       -  Simple to implement but can be very slow and expensive with large 
+          datasets.
+       -  Best for: Small datasets or when you need a complete refresh.
+
+    b. Incremental Extraction
+       -  We extract ONLY the new or changed data since the last extraction 
+          and write it to the DWH.
+       -  This is much faster and more efficient because we skip data that 
+          has not changed.
+       -  Requires a way to track what is "new" (e.g., a timestamp column 
+          like "last_modified_date" or a change flag).
+       -  Best for: Large datasets where full extraction would take too long.
+
+--------------------------------------------------------------------------------
+1.2. EXTRACTION TECHNIQUES
+--------------------------------------------------------------------------------
+These are the actual methods or tools we use to extract the data.
+
+    a. Manual Extraction
+       -  A person manually accesses the source system and extracts the data 
+          by hand.
+       -  Example: Opening a database, running a query, exporting results to 
+          Excel, then copying it to the DWH folder.
+       -  Pros: Simple, no setup needed.
+       -  Cons: Very slow, error-prone, not scalable, depends on humans.
+
+    b. Database Query
+       -  We connect directly to the source database and write SQL queries to 
+          extract the exact data we need.
+       -  Example: SELECT * FROM sales WHERE order_date >= '2024-01-01'
+       -  Pros: Very precise, you control exactly what data you get.
+       -  Cons: Requires database access and knowledge of SQL.
+
+    c. File Parsing
+       -  We read and extract data from files such as CSV, Excel, JSON, XML, 
+          or plain text files.
+       -  The source system exports data into files, and we "parse" (read 
+          and break down) those files to get the data.
+       -  Example: Reading a daily sales report saved as a .csv file from a 
+          shared network folder.
+       -  Pros: Simple, works even when you cannot connect directly to a 
+          database.
+       -  Cons: File format issues, encoding problems, manual file handling.
+
+    d. API Calling
+       -  We use an API (Application Programming Interface) to request data 
+          from a system over the internet or network.
+       -  An API is like a waiter: you send a request (your order), and the 
+          API brings back the data (your food).
+       -  Example: Calling a REST API like 
+          GET https://api.company.com/sales?date=2024-01-01 to get sales data.
+       -  Pros: Standardized, secure, great for cloud and third-party systems.
+       -  Cons: Rate limits, requires authentication, can be slow for large 
+          volumes.
+
+    e. Event-Based Streaming
+       -  Data is extracted in real-time as events happen in the source system.
+       -  Instead of waiting and pulling data on a schedule, the system 
+          "listens" for changes and captures them instantly.
+       -  Example: Every time a customer places an order, that event is 
+          immediately sent to a message queue (like Apache Kafka) and then 
+          consumed by the DWH pipeline.
+       -  Pros: Real-time data, no delay.
+       -  Cons: Complex to set up and maintain.
+
+    f. Change Data Capture (CDC)
+       -  A technique that automatically detects and captures only the rows 
+          that have been inserted, updated, or deleted in the source database.
+       -  It reads the database transaction log (a hidden record of every 
+          change) to find out what changed.
+       -  Example: SQL Server CDC feature tracks changes in a table and 
+          creates a log of all inserts, updates, and deletes.
+       -  Pros: Very efficient, captures exact changes, great for incremental 
+          loads.
+       -  Cons: Needs database support, adds some overhead to the source.
+
+    g. Web Scraping
+       -  We extract data from websites by reading the HTML content of web 
+          pages programmatically.
+       -  A script or bot visits a website, reads the page, and pulls out 
+          the data we need.
+       -  Example: Scraping product prices from an e-commerce website using 
+          Python (BeautifulSoup or Scrapy).
+       -  Pros: Can get data from sources that do not offer APIs or file 
+          exports.
+       -  Cons: Fragile (breaks when website changes), legal/ethical concerns, 
+          can be blocked by websites.
+
+
+================================================================================
+2.0. TRANSFORMATION METHODS
+================================================================================
+Definition: Transformation is the second step of ETL. It means changing, 
+cleaning, and reshaping the raw data so it fits the structure and rules of the 
+Data Warehouse. This is usually the HEAVIEST and most complex step.
+
+--------------------------------------------------------------------------------
+2.1 Data Enrichment
+--------------------------------------------------------------------------------
+    -  Adding extra, useful values or columns to our dataset that did not 
+       exist in the original source.
+    -  We "enrich" the data by combining it with additional information to 
+       make it more valuable.
+    -  Example: You have a customer table with just a ZIP code. You enrich 
+       it by adding city name, state, and country based on that ZIP code 
+       using a lookup table.
+
+--------------------------------------------------------------------------------
+2.2 Data Integration
+--------------------------------------------------------------------------------
+    -  Bringing data together from multiple different source systems into 
+       one single, unified data model.
+    -  The goal is to combine everything so it looks like it came from one 
+       place, even though it came from many.
+    -  Example: Combining customer data from the CRM system, order data from 
+       the ERP system, and payment data from the billing system into one 
+       unified "Sales" model.
+
+--------------------------------------------------------------------------------
+2.3 Deriving New Columns
+--------------------------------------------------------------------------------
+    -  Creating new columns by calculating or combining values from columns 
+       that already exist.
+    -  We "derive" new information from what we already have.
+    -  Example: 
+       * You have "unit_price" and "quantity" columns. You derive a new 
+         column: total_amount = unit_price * quantity.
+       * You have "birth_date". You derive a new column: 
+         age = CURRENT_YEAR - YEAR(birth_date).
+       * You have "first_name" and "last_name". You derive: 
+         full_name = first_name + ' ' + last_name.
+
+--------------------------------------------------------------------------------
+2.4 Data Normalization and Standardization
+--------------------------------------------------------------------------------
+    -  Making data consistent and uniform across all records so everything 
+       follows the same format and rules.
+    -  Normalization: Adjusting numeric values to a common scale without 
+       changing differences in ranges.
+    -  Standardization: Making text, dates, and formats follow one single 
+       standard across the whole dataset.
+    -  Examples:
+       * Date formats: Some sources store dates as "MM/DD/YYYY", others as 
+         "DD-MM-YYYY". We standardize everything to "YYYY-MM-DD".
+       * Country names: "USA", "U.S.A.", "United States" all become 
+         "United States".
+       * Phone numbers: "(555) 123-4567" and "5551234567" both become 
+         "+1-555-123-4567".
+       * Currency: Converting all amounts to one currency (e.g., USD).
+       * Text casing: "john", "JOHN", "John" all become "John".
+
+--------------------------------------------------------------------------------
+2.5 Business Rules and Logic
+--------------------------------------------------------------------------------
+    -  Applying specific rules defined by the business to transform or 
+       categorize data based on certain conditions.
+    -  These rules are not about fixing data; they are about adding business 
+       meaning to the data.
+    -  Examples:
+       * Customer Segmentation: If total_purchases > $10,000 then label as 
+         "Premium Customer", else label as "Standard Customer".
+       * Tax Calculation: If country = 'US' then apply 7% sales tax, if 
+         country = 'UK' then apply 20% VAT.
+       * Status Mapping: If order is shipped AND delivered, set status to 
+         "Completed". If shipped but not delivered, set to "In Transit".
+       * Fiscal Year: The company's fiscal year starts in April, so 
+         March 2024 belongs to fiscal year 2023-2024.
+
+--------------------------------------------------------------------------------
+2.6 Data Aggregations
+--------------------------------------------------------------------------------
+    -  Summarizing detailed (granular) data into higher-level totals or 
+       summaries.
+    -  We take many rows of detailed data and "aggregate" (combine) them 
+       into fewer rows with summary values.
+    -  Common aggregation functions: SUM, COUNT, AVG, MIN, MAX.
+    -  Examples:
+       * Instead of storing every single transaction, we aggregate to get 
+         total_sales_per_month for each product.
+       * Instead of individual employee hours, we calculate 
+         average_hours_per_department.
+       * Counting the number of orders per customer per year.
+
+--------------------------------------------------------------------------------
+2.7 Data Cleansing
+--------------------------------------------------------------------------------
+Definition: Data cleansing (also called data cleaning) means finding and fixing 
+problems in the data so it becomes accurate, consistent, and usable. This is one 
+of the most important transformation tasks.
+
+    a. Remove Duplicates
+       -  Finding and removing rows that appear more than once in the dataset.
+       -  Duplicate data can cause wrong counts, wrong totals, and wrong 
+          reports.
+       -  Example: A customer "John Smith" appears 3 times with the same 
+          email. We keep only one record and delete the other two.
+
+    b. Data Filtering
+       -  Removing rows that are not relevant or not needed for the DWH.
+       -  We filter OUT data we do not want and keep only what matters.
+       -  Example: The source has data from all countries, but our DWH only 
+          needs data from the US and Canada. We filter out all other countries.
+
+    c. Handling Missing Data
+       -  Dealing with rows where some columns have no value (NULL or blank).
+       -  Missing data can break calculations and reports.
+       -  Common approaches:
+          * Replace with a default value (e.g., replace NULL city with 
+            "Unknown").
+          * Replace with the average or median (for numeric columns).
+          * Delete the row entirely if critical data is missing.
+          * Leave as NULL if it is acceptable for that column.
+
+    d. Handling Invalid Values
+       -  Finding and fixing values that do not make sense or violate rules.
+       -  Invalid data gives wrong results in reports and analytics.
+       -  Examples:
+          * Age = -5 (age cannot be negative) -> fix or remove.
+          * Email = "not_an_email" (does not follow email format) -> flag it.
+          * Order date is in the future (cannot have an order placed tomorrow) 
+            -> investigate and fix.
+
+    e. Handling Unwanted Spaces
+       -  Removing extra spaces from text data (leading spaces, trailing 
+          spaces, or double spaces in the middle).
+       -  Spaces cause problems in matching, grouping, and joining data.
+       -  Example: " John Smith " should become "John Smith". Without fixing 
+          this, the DWH might treat " John Smith " and "John Smith" as two 
+          different people.
+       -  SQL: Use TRIM(), LTRIM(), RTRIM() functions.
+
+    f. Data Type Casting
+       -  Converting data from one data type to another so it matches what 
+          the DWH expects.
+       -  Sometimes the source stores numbers as text, or dates as strings. 
+          We need to "cast" them to the correct type.
+       -  Examples:
+          * Price stored as text "29.99" -> cast to DECIMAL 29.99.
+          * Date stored as text "2024-01-15" -> cast to DATE type.
+          * Quantity stored as FLOAT 5.0 -> cast to INT 5.
+       -  SQL: Use CAST() or CONVERT() functions.
+
+    g. Outlier Detection
+       -  Finding data points that are extremely different from the rest of 
+          the data (unusually high or unusually low values).
+       -  Outliers can distort averages, totals, and other calculations.
+       -  Examples:
+          * Average salary is $50,000 but one record shows $5,000,000. 
+            That is an outlier and needs investigation.
+          * Average order value is $100 but one order is $50,000. Could be 
+            a data entry error or a genuine bulk order.
+       -  Approaches: Flag the outlier for review, remove it, or cap it 
+          at a maximum/minimum threshold.
+
+
+================================================================================
+3.0. LOAD
+================================================================================
+Definition: Loading is the third and final step of ETL. It means taking the 
+transformed (cleaned and reshaped) data and writing it into the target system, 
+which is usually the Data Warehouse.
+
+--------------------------------------------------------------------------------
+3.1. Processing Types
+--------------------------------------------------------------------------------
+These define HOW OFTEN and WHEN data gets loaded into the DWH.
+
+    a. Batch Processing
+       -  Loading the DWH in one big batch of data at a scheduled time.
+       -  It is a one-time process that runs on a schedule (for example, 
+          once or twice a day, usually during off-peak hours like midnight).
+       -  All the data collected since the last batch is processed together 
+          in one go.
+       -  Example: Every night at 2 AM, the ETL job runs, extracts all new 
+          orders from the day, transforms them, and loads them into the DWH. 
+          Users see updated data the next morning.
+       -  Pros: Simple, reliable, easy to manage and troubleshoot.
+       -  Cons: Data is not real-time (there is always some delay).
+
+    b. Streaming Processing (Real-Time Processing)
+       -  If there is a change in the source system, we process this change 
+          as soon as possible through all the layers of the Data Warehouse.
+       -  We are streaming the data in order to have a real-time DWH, so 
+          once something changes in the source, it shows up in the DWH 
+          almost immediately.
+       -  This is a very challenging thing to do in data warehousing because 
+          it requires complex infrastructure (e.g., Apache Kafka, Apache 
+          Spark Streaming).
+       -  Example: A stock trading platform needs to show live prices. Every 
+          price change is streamed instantly through the pipeline to the DWH.
+       -  Pros: Real-time or near-real-time data.
+       -  Cons: Very complex, expensive, harder to debug and maintain.
+
+--------------------------------------------------------------------------------
+3.2. Full Load Methods
+--------------------------------------------------------------------------------
+Definition: Full load means we load ALL the data into the target table every 
+time, not just the new stuff. Here are the common strategies:
+
+    a. Truncate and Insert
+       -  First, DELETE all existing data from the target table (truncate it), 
+          then INSERT all the data fresh from the source.
+       -  The table structure (columns, data types) stays the same. Only the 
+          data inside is replaced.
+       -  Example: TRUNCATE TABLE dim_customers; INSERT INTO dim_customers 
+          SELECT * FROM staging_customers;
+       -  Pros: Simple, guarantees a fresh copy.
+       -  Cons: The table is briefly empty during the load (risky if someone 
+          queries it at that moment).
+
+    b. Upsert (Update + Insert)
+       -  Check each row: if it already exists in the target, UPDATE it. 
+          If it does not exist, INSERT it as a new row.
+       -  "Upsert" = "Update" + "Insert" combined.
+       -  Example: If customer_id 101 already exists, update their address. 
+          If customer_id 999 is new, insert the entire row.
+       -  Pros: No data loss, no downtime, handles both new and changed data.
+       -  Cons: Slower than truncate-insert for very large datasets.
+
+    c. Drop, Create, Insert
+       -  DROP the entire target table (delete the table itself, not just 
+          the data), then CREATE the table again from scratch, then INSERT 
+          all the data.
+       -  This is the most aggressive approach.
+       -  Example: DROP TABLE dim_products; CREATE TABLE dim_products (...); 
+          INSERT INTO dim_products SELECT * FROM staging_products;
+       -  Pros: Useful when the table structure (schema) changes frequently.
+       -  Cons: Table is completely gone during the process. Not safe for 
+          tables that other reports depend on.
+
+--------------------------------------------------------------------------------
+3.3. Incremental Load Methods
+--------------------------------------------------------------------------------
+Definition: Incremental load means we load ONLY the new or changed data since 
+the last load. This is more efficient than full load for large datasets.
+
+    a. Upsert (Update + Insert)
+       -  Same as above: if the row exists, update it. If it does not exist, 
+          insert it.
+       -  Only the rows that changed since the last load are processed.
+       -  Example: Only customers who updated their profile today are 
+          upserted.
+
+    b. Append (Insert Only)
+       -  Simply ADD (insert) new rows to the end of the target table.
+       -  We do NOT update or delete any existing rows.
+       -  Best for: Fact tables (like sales transactions) where old records 
+          never change, and we just keep adding new ones.
+       -  Example: Every day we append 10,000 new sales transactions to the 
+          fact_sales table. Old transactions are never touched.
+
+    c. Merge (Update + Insert + Delete)
+       -  The most complete incremental method. It can UPDATE existing rows, 
+          INSERT new rows, and DELETE rows that no longer exist in the source.
+       -  SQL Server has a MERGE statement that does all three in one 
+          operation.
+       -  Example: 
+          * Customer changed their name -> UPDATE.
+          * New customer signed up -> INSERT.
+          * Customer account was deleted from source -> DELETE from DWH too.
+       -  Pros: Keeps the DWH perfectly in sync with the source.
+       -  Cons: More complex, can be slower.
+
+--------------------------------------------------------------------------------
+3.4. Slowly Changing Dimensions (SCD)
+--------------------------------------------------------------------------------
+Definition: In a Data Warehouse, "dimensions" are descriptive tables (like 
+customers, products, employees). Over time, the data in these tables can CHANGE 
+slowly (e.g., a customer moves to a new city). SCD defines HOW we handle these 
+changes in the DWH.
+
+The big question is: When something changes in the source, do we keep the old 
+value, overwrite it, or store both?
+
+    a. SCD Type 0 - No Historization (Fixed / Retain Original)
+       -  We NEVER update the dimension record once it is loaded.
+       -  The original value stays forever, even if the source changes.
+       -  Example: A customer's original sign-up date. Even if they update 
+          their profile, the sign-up date should never change.
+       -  Use when: The value should always reflect the original state.
+
+    b. SCD Type 1 - Overwrite (No History Kept)
+       -  When a value changes, we simply OVERWRITE the old value with the 
+          new one.
+       -  We LOSE the history. There is no way to know what the old value 
+          was.
+       -  Example: A customer's phone number changes from "555-1234" to 
+          "555-9999". We just update the record. The old phone number is 
+          gone forever.
+       -  Use when: History does not matter for that attribute (e.g., fixing 
+          a typo in a name).
+
+    c. SCD Type 2 - Historization (Full History Kept)
+       -  When a value changes, we keep the OLD record and add a NEW record 
+          with the updated value.
+       -  We track history using extra columns like:
+          * start_date and end_date (when each version was valid)
+          * is_current flag (TRUE for the latest version, FALSE for old ones)
+       -  Example: Customer "Ali" moves from "New York" to "London".
+          Row 1: Ali | New York  | start: 2020-01-01 | end: 2024-06-15 | current: FALSE
+          Row 2: Ali | London    | start: 2024-06-15 | end: NULL       | current: TRUE
+       -  Use when: You need to track and analyze historical changes (very 
+          common for customer, employee, and product dimensions).
+
+    d. SCD Type 3 - Limited History (Previous Value Column)
+       -  We add an extra column to store the PREVIOUS value alongside the 
+          current value.
+       -  We only keep ONE level of history (the current and the previous).
+       -  Example: Customer "Ali" moves from "New York" to "London".
+          Row: Ali | current_city: London | previous_city: New York
+          If Ali moves again to "Dubai", previous_city becomes "London" and 
+          current_city becomes "Dubai". "New York" is now lost.
+       -  Use when: You only care about the most recent change, not the full 
+          history. Less common than SCD Type 2.
+
+================================================================================
+END OF ETL DEEP DIVE NOTES
+================================================================================
+
+====================================================================
+NOTES: DATA WAREHOUSING PROJECT - ETL PIPELINE ARCHITECTURE
+====================================================================
+
+1. DATA EXTRACTION
+   * Extraction Type: Full or Incremental (depending on source size and update frequency).
+   * Extraction Method: Pull (the pipeline actively connects to and requests data from the source systems).
+   * Extraction Techniques: File Parsing (reading and parsing structured/semi-structured files to extract data payloads).
+
+2. DATA TRANSFORMATION
+   The pipeline incorporates a comprehensive transformation layer to prepare the data for analytics:
+   * Data Cleansing: Filtering out bad records, handling missing values, and resolving data quality issues.
+   * Normalization & Standardization: Aligning data types, standardizing date formats, and enforcing consistent casing.
+   * Data Integration: Combining, joining, and consolidating datasets from multiple sources.
+   * Data Enrichment: Appending external attributes or additional context to the base data.
+   * Column Operations: Creating derived columns, dropping unnecessary fields, and mapping column names.
+   * Business Rules & Logic: Applying specific domain logic, conditional formatting, and organizational calculations.
+   * Data Aggregation: Rolling up granular row-level data into summarized metrics.
+
+3. DATA PROCESSING
+   * Processing Strategy: Batch Processing (data is collected, transformed, and moved at scheduled intervals rather than via continuous real-time streaming).
+
+4. DATA LOADING
+   * Load Method: Full Load.
+   * Execution Strategy: Truncate and Insert (completely wiping the existing target tables clean before inserting the fresh batch of extracted data).
+   * Slowly Changing Dimensions (SCD): SCD Type 1 (Overwriting the existing content in the data warehouse with the latest data, meaning no historical changes are preserved for these specific records).
+====================================================================
+
+we are using draw.io for diagrams and charts.
+
+we are going to use notion for project management and organization.
+
+we going to deploy on GitHub.
+
+====================================================================
+NOTES: DATA WAREHOUSE PROJECT PLAN (NOTION SETUP)
+====================================================================
+
+To successfully manage and organize ideas, plans, and resources for 
+this complex project, we are using Notion as our central project 
+management tool. We structured the Notion workspace into two main 
+relational sections: "Project Epics" (high-level phases) and "Project 
+Tasks" (actionable sub-steps). 
+
+Below is the exact project plan breakdown we created in Notion, 
+starting with the very first sub-topic:
+
+====================================================================
+EPIC 1: REQUIREMENTS ANALYSIS
+====================================================================
+- Task 1.1: Analyse & Understand the Requirements
+  This is the first sub-topic to cover for the project. Before 
+  designing databases or writing code, the primary step is to thoroughly 
+  analyze the business needs, evaluate the source data, and understand 
+  the exact reporting expectations.
+
+====================================================================
+EPIC 2: DESIGN DATA ARCHITECTURE
+====================================================================
+- Task 2.1: Choose Data Management Approach
+- Task 2.2: Brainstorm and Design The Layers
+- Task 2.3: Draw the Data Architecture (Draw.io)
+  As part of the design phase, we use Draw.io to visually map out 
+  the ETL pipelines, data flows, and architectural layers.
+
+====================================================================
+EPIC 3: PROJECT INITIALIZATION
+====================================================================
+- Task 3.1: Create Detailed Project Tasks (Notion)
+- Task 3.2: Define Project Naming Conventions
+- Task 3.3: Create GIT Repo & Prepare The Structure
+  This step initializes our version control, as we will be deploying 
+  and tracking our project code on GitHub.
+- Task 3.4: Create DB & Schema
+====================================================================
+---------------------------------------------------------------------------
+
+
+====================================================================
+1. REQUIREMENTS ANALYSIS - Analyse & Understand the Requirements 
+====================================================================
+
+  1.1 Building the Data Warehouse (Data Engineering)
+  --------------------------------------------------------------------
+
+    1.1.1 Objective
+          Develop a modern data warehouse using SQL Server to consolidate 
+          sales data, enabling analytical reporting and informed 
+          decision-making.
+
+    1.1.2 Specifications
+          a) Data Sources: Import data from two source systems (ERP and 
+             CRM) provided as CSV files.
+          b) Data Quality: Cleanse and resolve data quality issues prior 
+             to analysis.
+          c) Integration: Combine both sources into a single, 
+             user-friendly data model designed for analytical queries.
+          d) Scope: Focus on the latest dataset only; historization of 
+             data is not required.
+          e) Documentation: Provide clear documentation of the data 
+             model to support both business stakeholders and analytics 
+             teams.
+
+
+  1.2 BI: Analytics & Reporting (Data Analysis)
+  --------------------------------------------------------------------
+
+    1.2.1 Objective
+          Develop SQL-based analytics to deliver detailed insights into:
+          a) Customer Behavior
+          b) Product Performance
+          c) Sales Trends
+
+    1.2.2 Expected Outcome
+          These insights empower stakeholders with key business metrics, 
+          enabling strategic decision-making.
+
+====================================================================
+
+====================================================================
+2. DESIGN DATA ARCHITECTURE
+====================================================================
+
+  2.1 Choose Data Management Approach
+  ====================================================================
+
+    2.1.1 Overview
+          The first step in building a robust data architecture is 
+          selecting the right overarching data management approach. 
+          There are four major types of data architectures:
+
+    2.1.2 Types of Data Architectures
+
+          a) DATA WAREHOUSE
+             * Best suited for: Structured data, relational data models.
+             * Primary Use Case: Business Intelligence (BI), historical 
+               reporting, and structured analytics.
+             * Characteristics: Highly optimized for fast read queries 
+               and complex aggregations.
+
+          b) DATA LAKE
+             * Best suited for: Highly flexible storage capable of 
+               holding structured, semi-structured (JSON, XML), and 
+               unstructured data (images, videos, server logs, audio).
+             * Primary Use Case: Advanced analytics, big data 
+               processing, and Machine Learning (ML).
+             * Characteristics: Data is stored in its raw, native 
+               format until needed (schema-on-read).
+
+          c) DATA LAKEHOUSE
+             * Best suited for: A modern hybrid approach that combines 
+               the flexibility and scalability of a Data Lake with the 
+               data management and ACID transactional features of a 
+               Data Warehouse.
+             * Primary Use Case: Unified platforms handling both BI 
+               reporting and Machine Learning workloads.
+
+          d) DATA MESH
+             * Best suited for: Decentralized, domain-oriented 
+               organizational structures.
+             * Primary Use Case: Treating "data as a product" where 
+               individual business domains manage their own data 
+               pipelines rather than using a centralized data team.
+
+    2.1.3 Project Decision: DATA WAREHOUSE
+          For this project, we are moving forward with a Data Warehouse 
+          architecture.
+
+    2.1.4 Methodologies for Building Data Platforms
+          Once the architecture is chosen, you must select a modeling 
+          methodology. Based on the architectural mappings:
+
+          A. DATA WAREHOUSE MODELING APPROACHES
+
+             a) INMON (Top-Down Approach)
+                * Pipeline: Source Data -> Stage -> EDW (3NF) -> Data Marts
+                * Expansion: Bill Inmon's approach advocates for building 
+                  a centralized Enterprise Data Warehouse (EDW) in the 
+                  highly normalized 3rd Normal Form (3NF). Department-
+                  specific Data Marts are then built by pulling data from 
+                  this centralized EDW. It is highly structured but can 
+                  be slow to build.
+
+             b) KIMBALL (Bottom-Up Approach)
+                * Pipeline: Source Data -> Stage -> Data Marts
+                * Expansion: Ralph Kimball's approach focuses on 
+                  dimensional modeling (Star Schemas). Instead of a 
+                  massive normalized EDW, you build individual, 
+                  denormalized Data Marts for specific business processes 
+                  (e.g., Sales, HR). The "Enterprise Data Warehouse" is 
+                  simply the union of all these conformed Data Marts. It 
+                  is agile and highly optimized for fast BI querying.
+
+             c) DATA VAULT
+                * Pipeline: Source Data -> Stage -> Raw Vault -> 
+                  Business Vault -> Data Marts
+                * Expansion: Designed for extreme scalability and 
+                  auditability. It separates structural information 
+                  (Hubs and Links) from descriptive attributes 
+                  (Satellites). This makes it incredibly easy to add new 
+                  data sources without breaking existing models, making 
+                  it ideal for massive, frequently changing enterprise 
+                  systems.
+
+          B. DATA LAKEHOUSE MODELING APPROACH
+
+             d) MEDALLION ARCHITECTURE
+                * Pipeline: Source Data -> Bronze -> Silver -> Gold
+                * Expansion: The modern standard for Data Lakehouses 
+                  (like Databricks or Microsoft Fabric). Data flows 
+                  through progressively refined layers:
+                  - Bronze (Raw): Exact copy of source data.
+                  - Silver (Cleansed): Filtered, cleaned, and 
+                    standardized data.
+                  - Gold (Curated): Business-level aggregations and 
+                    dimensional models ready for BI and reporting.
+
+
+  2.2 Brainstorm & Design the Layers
+  ====================================================================
+
+    2.2.1 Core Principle: Separation of Concerns (SoC)
+    --------------------------------------------------------------------
+
+          a) What is Separation of Concerns (SoC)?
+             Separation of Concerns is a design principle where a 
+             complex system is divided into distinct, independent 
+             sections (modules), and each section handles one specific 
+             job.
+
+          b) Without SoC (The Messy Way): 
+             All tasks - like pulling raw data, fixing bad records, and 
+             calculating business metrics - are mixed together in one 
+             giant step. If something breaks, it is very hard to find 
+             the error or fix it without breaking everything else.
+
+          c) With SoC (The Modular Way): 
+             Tasks are broken down into separate, sequential modules 
+             (Module A -> Module B -> Module C). Each module focuses 
+             on a single responsibility and passes its output to the 
+             next module.
+
+          d) How SoC Applies to Our Data Warehouse (Medallion Architecture):
+             We apply SoC by splitting our data warehouse into three 
+             distinct layers:
+             i.   Module A -> Bronze Layer ("Ingest"): Only focuses on 
+                  bringing raw data in from the source systems.
+             ii.  Module B -> Silver Layer ("Clean"): Only focuses on 
+                  cleaning and standardizing that data.
+             iii. Module C -> Gold Layer ("Business"): Only focuses on 
+                  shaping the clean data for business reporting.
+
+    2.2.2 Detailed Breakdown of the Three Layers
+    --------------------------------------------------------------------
+
+          a) LAYER 1: BRONZE LAYER (Raw Data Layer)
+             In simple terms, the Bronze layer is your exact backup 
+             copy of the source files. You bring the data into SQL 
+             Server without changing a single thing.
+
+             - Definition: Raw, unprocessed data loaded as-is directly 
+               from the source systems.
+             - Objective: Traceability and debugging. (If a report 
+               looks wrong later, you can check the Bronze layer to 
+               see if the problem came from the original source file 
+               or your SQL code).
+             - Object Type: Tables (physical database tables).
+             - Load Method: Full Load using Truncate & Insert (wipe 
+               the table clean and reload the fresh data).
+             - Data Transformation: None (data is kept completely 
+               as-is).
+             - Data Modeling: None (kept as-is, matching the source 
+               structure).
+             - Target Audience: Data Engineers.
+
+          b) LAYER 2: SILVER LAYER (Cleansed & Standardized Layer)
+             In simple terms, the Silver layer is the "workshop" or 
+             intermediate layer. Here, you take the messy data from 
+             the Bronze layer, fix all the quality issues, and make 
+             it neat and consistent so it is ready to be analyzed.
+
+             - Definition: Clean and standardized data.
+             - Objective: Act as an intermediate layer to prepare 
+               data for analysis.
+             - Object Type: Tables (physical database tables).
+             - Load Method: Full Load using Truncate & Insert.
+             - Data Transformation: 
+               i.   Data Cleaning (removing duplicates, handling 
+                    nulls, fixing bad values).
+               ii.  Data Standardization (making formats consistent, 
+                    like dates or text casing).
+               iii. Data Normalization.
+               iv.  Derived Columns (calculating new helper columns 
+                    from existing ones).
+               v.   Data Enrichment (adding useful context to the 
+                    rows).
+             - Data Modeling: None (kept as-is in terms of table 
+               structure; tables still mirror the source tables).
+             - Target Audience: Data Analysts and Data Engineers.
+
+          c) LAYER 3: GOLD LAYER (Business-Ready Layer)
+             In simple terms, the Gold layer is the final showroom. 
+             Here, you combine the clean tables from the Silver layer 
+             (like joining ERP and CRM tables together), apply 
+             business rules, and organize the data into an easy-to-
+             understand structure (like a Star Schema) for dashboards 
+             and reports.
+
+             - Definition: Business-ready data.
+             - Objective: Provide final, curated data to be consumed 
+               for reporting and analytics.
+             - Object Type: Views (virtual tables generated by SQL 
+               queries, rather than storing duplicate physical data).
+             - Load Method: None (because Views dynamically read 
+               from the Silver tables without needing a separate 
+               data load).
+             - Data Transformation: 
+               i.   Data Integration (joining and combining tables 
+                    from different sources).
+               ii.  Data Aggregation (summarizing numbers and 
+                    metrics).
+               iii. Business Logic & Rules (applying company-specific 
+                    calculations).
+             - Data Modeling: 
+               i.   Star Schema (organizing into Fact and Dimension 
+                    views).
+               ii.  Aggregated Objects.
+               iii. Flat Tables.
+             - Target Audience: Data Analysts and Business Users.
+
+    2.2.3 Side-by-Side Summary Table
+    --------------------------------------------------------------------
+
+          Attribute            | Bronze Layer          | Silver Layer               | Gold Layer
+          ---------------------|-----------------------|----------------------------|---------------------------
+          Definition           | Raw, as-is data       | Clean & standardized data  | Business-ready data
+          Objective            | Traceability & Debug  | Prepare data for analysis  | Reporting & Analytics
+          Object Type          | Tables                | Tables                     | Views
+          Load Method          | Full (Truncate/Insert)| Full (Truncate/Insert)     | None
+          Transformations      | None (as-is)          | Cleaning, Standardization, | Integration, Aggregation,
+                               |                       | Normalization, Derived,    | Business Logic & Rules
+                               |                       | Enrichment                 |
+          Data Modeling        | None (as-is)          | None (as-is)               | Star Schema, Aggregated
+                               |                       |                            | Objects, Flat Tables
+          Target Audience      | Data Engineers        | Data Analysts & Engineers  | Data Analysts & Business
+
+
+  2.3 Draw the Data Architecture (Draw.io)
+  ====================================================================
+
+    2.3.1 Reference
+          To see the data architecture go to "C:\Learning\SQL\SQL 
+          Course Data with Baraa\sql-data-warehouse-project\MY 
+          PRACTICAL - ALL FILES\data_architecture.png" - created 
+          using Draw.io.
+
+====================================================================
+
+====================================================================
+3. PROJECT INITIALIZATION
+====================================================================
+
+  3.1 Create Detailed Project Tasks (Notion)
+  ====================================================================
+
+      In Notion we created three additional Epics for the actual build 
+      phases — Bronze, Silver, and Gold layers. Each Epic contains a 
+      set of sequential tasks listed below.
+
+    3.1.1 Epic: Build Bronze Layer (5 Tasks)
+    --------------------------------------------------------------------
+          a) Analysing: Source Systems
+          b) Coding: Data Ingestion
+          c) Validating: Data Completeness & Schema Checks
+          d) Document: Draw Data Flow (Draw.io)
+          e) Commit Code in Git Repo
+
+    3.1.2 Epic: Build Silver Layer (5 Tasks)
+    --------------------------------------------------------------------
+          a) Analysing: Explore & Understand Data
+          b) Coding: Data Cleansing
+          c) Validating: Data Correctness Checks
+          d) Documenting & Versioning in GIT
+          e) Commit Code in Git Repo
+
+    3.1.3 Epic: Build Gold Layer (7 Tasks)
+    --------------------------------------------------------------------
+          a) Analysing: Explore Business Objects
+          b) Coding: Data Integration
+          c) Validating: Data Integration Checks
+          d) Document: Draw Data Model of Star Schema (Draw.io)
+          e) Document: Create Data Catalog
+          f) Documenting & Versioning in GIT
+          g) Commit Code in Git Repo
+
+
+  3.2 Define Project Naming Conventions
+  ====================================================================
+
+      Naming conventions are a set of rules or guidelines for naming 
+      anything in the project — databases, schemas, tables, views, 
+      columns, stored procedures, etc. A single, consistent naming 
+      convention is used throughout the entire project to keep it 
+      organized and maintainable.
+
+    3.2.1 General Rules
+    --------------------------------------------------------------------
+          a) Casing: Use snake_case for all names (words separated by 
+             underscores, all lowercase).
+             Example: customer_info, order_details, sales_monthly
+          b) Language: Use English for all names.
+          c) Avoid Reserved Words: Do not use SQL reserved words 
+             (e.g., SELECT, TABLE, ORDER) as object names.
+
+    3.2.2 Table Naming Conventions
+    --------------------------------------------------------------------
+
+          a) Bronze & Silver Layer Rules
+             - All names must start with the source system name, and 
+               table names must match their original names from the 
+               source without renaming.
+             - Pattern: <sourcesystem>_<entity>
+               * <sourcesystem> : Name of the source system 
+                 (e.g., crm, erp).
+               * <entity> : Exact table name from the source system.
+               * Example: crm_customer_info -> Customer information 
+                 from the CRM system.
+
+          b) Gold Layer Rules
+             - All names must use meaningful, business-aligned names 
+               for tables, starting with the category prefix.
+             - Pattern: <category>_<entity>
+               * <category> : Describes the role of the table, such 
+                 as dim (dimension) or fact (fact table).
+               * <entity> : Descriptive name of the table, aligned 
+                 with the business domain (e.g., customers, products, 
+                 sales).
+               * Examples:
+                 - dim_customers -> Dimension table for customer data.
+                 - fact_sales -> Fact table containing sales 
+                   transactions.
+
+    3.2.3 Glossary of Category Patterns (Gold Layer)
+    --------------------------------------------------------------------
+
+          Pattern  | Meaning            | Example(s)
+          ---------|--------------------|-------------------------------
+          dim_     | Dimension table    | dim_customer, dim_product
+          fact_    | Fact table         | fact_sales
+          agg_     | Aggregated table   | agg_customers, agg_sales_monthly
+
+    3.2.4 Column Naming Conventions
+    --------------------------------------------------------------------
+
+          Key Concepts: Types of Keys in a Database
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          Before defining column naming rules, it is important to 
+          understand the types of keys commonly used in databases:
+
+          i.   Primary Key: A column (or set of columns) that uniquely 
+               identifies each row in a table. Every table should have 
+               one. Example: customer_id in a customers table.
+
+          ii.  Foreign Key: A column that creates a link between two 
+               tables by referencing the primary key of another table. 
+               Example: customer_id in an orders table pointing to the 
+               customers table.
+
+          iii. Natural Key: A primary key that uses real-world, 
+               meaningful data that already exists in the source system 
+               (e.g., email address, Social Security Number, product 
+               SKU). It has business meaning but can change over time.
+
+          iv.  Surrogate Key: An artificially generated key (usually an 
+               auto-incrementing integer or a GUID) that has NO business 
+               meaning. It is created purely to serve as a stable, 
+               unique identifier in the Data Warehouse. Surrogate keys 
+               are preferred in DWH dimension tables because they:
+               - Never change (unlike natural keys which can be updated).
+               - Are simple, small, and fast for joins.
+               - Decouple the DWH from source system key changes.
+
+          v.   Composite Key: A primary key made up of two or more 
+               columns combined. Example: (order_id, product_id) 
+               together uniquely identify a row in an order_items table.
+
+          vi.  Candidate Key: Any column (or combination) that COULD 
+               serve as a primary key. The one you actually pick 
+               becomes the primary key; the rest remain candidates.
+
+          vii. Unique Key: A constraint ensuring all values in a column 
+               are distinct, similar to a primary key but it allows one 
+               NULL value and a table can have multiple unique keys.
+
+          a) Surrogate Keys
+             - All primary keys in dimension tables must use the 
+               suffix _key.
+             - Pattern: <table_name>_key
+               * <table_name> : Refers to the name of the table or 
+                 entity the key belongs to.
+               * _key : A suffix indicating that this column is a 
+                 surrogate key.
+               * Example: customer_key -> Surrogate key in the 
+                 dim_customers table.
+
+          b) Technical Columns
+             - All technical columns must start with the prefix dwh_, 
+               followed by a descriptive name indicating the column's 
+               purpose.
+             - Pattern: dwh_<column_name>
+               * dwh : Prefix exclusively for system-generated 
+                 metadata.
+               * <column_name> : Descriptive name indicating the 
+                 column's purpose.
+               * Example: dwh_load_date -> System-generated column 
+                 used to store the date when the record was loaded.
+
+    3.2.5 Stored Procedure Naming Conventions
+    --------------------------------------------------------------------
+          - All stored procedures used for loading data must follow 
+            the naming pattern: load_<layer>
+            * <layer> : Represents the layer being loaded, such as 
+              bronze, silver, or gold.
+            * Examples:
+              - load_bronze -> Stored procedure for loading data 
+                into the Bronze layer.
+              - load_silver -> Stored procedure for loading data 
+                into the Silver layer.
+
+  3.3 Create GIT Repo & Prepare The Structure
+  ====================================================================
+
+      Git is all about having a safe, centralized place for our code 
+      — to maintain, version, and deploy it. With Git we can track 
+      every change that happens to the code, collaborate with our team, 
+      and if something goes wrong we can roll back to a previous 
+      version. The best part is that when the project is complete, we 
+      can share the repository as part of our professional portfolio. 
+      The goal is to have a well-documented Git repo at the end.
+
+    3.3.1 Create the Repository
+    --------------------------------------------------------------------
+          Steps:
+          a) Go to GitHub (github.com) and sign in.
+          b) Click "New" to create a new repository.
+          c) Set the repository name (e.g., sql-data-warehouse-project).
+          d) Set visibility to Public (so it can serve as a portfolio 
+             piece).
+          e) Add a license: select MIT License.
+          f) Check "Add a README file" to initialize with a README.md.
+          g) Click "Create repository".
+
+    3.3.2 Build the Folder Structure
+    --------------------------------------------------------------------
+          To create folders in GitHub, go to "Add file" -> "Create new 
+          file" and type the folder name followed by a slash (e.g., 
+          datasets/) — this tells Git it is a folder, not a file. Then 
+          add a placeholder file inside that folder (e.g., .gitkeep) 
+          and commit. Repeat this for each folder.
+
+          Final repository structure:
+
+          sql-data-warehouse-project/
+          ├── datasets/          -> Raw data files (CSV exports from 
+          │                         ERP and CRM source systems).
+          ├── docs/              -> Project documentation, data 
+          │                         architecture diagrams, data models.
+          ├── scripts/           -> SQL scripts for ETL pipelines, 
+          │                         stored procedures, and schema setup.
+          ├── tests/             -> Test and validation scripts for 
+          │                         data quality checks.
+          ├── LICENSE            -> MIT License file.
+          └── README.md          -> Main project description and guide.
+
+    3.3.3 Prepare the README File
+    --------------------------------------------------------------------
+          The README.md is the front page of the repository. It should 
+          contain the following sections:
+          a) Project Title & Overview: What this repository is about.
+          b) Project Requirements: The business and technical 
+             specifications (from section 1).
+          c) Repository Structure: A guide to the folder layout.
+          d) License: Reference to the MIT License.
+          e) About Me: A brief section about the author/contributor.
+
+
+  3.4 Create DB & Schema
+  ====================================================================
+
+      In this step, we initialize the physical database environment in 
+      SQL Server (SSMS). We create a dedicated database named 
+      'DataWarehouse' and define three separate schemas — 'bronze', 
+      'silver', and 'gold' — to establish the physical boundaries for 
+      each layer of our Medallion Architecture.
+
+    3.4.1 Step-by-Step Database & Schema Initialization
+    --------------------------------------------------------------------
+          Steps in SQL Server Management Studio (SSMS):
+          a) Open SSMS and connect to your local SQL Server instance.
+          b) Switch to the system 'master' database:
+             USE master;
+          c) Create the dedicated database:
+             CREATE DATABASE DataWarehouse;
+          d) Switch context to the new database:
+             USE DataWarehouse;
+          e) Create the three schemas for the Medallion Architecture:
+             CREATE SCHEMA bronze;
+             CREATE SCHEMA silver;
+             CREATE SCHEMA gold;
+
+          Complete SQL Initialization Script:
+          -----------------------------------
+          /*
+          ==============================================================
+          Database & Schema Initialization Script
+          ==============================================================
+          Script Purpose:
+              Creates the 'DataWarehouse' database. If it already 
+              exists, it is dropped and recreated. Sets up the three 
+              schemas ('bronze', 'silver', 'gold') for each layer.
+
+          WARNING:
+              Dropping the database deletes all existing tables, data, 
+              and views. Proceed with caution.
+          ==============================================================
+          */
+
+          USE master;
+          GO
+
+          -- Drop and recreate the 'DataWarehouse' database if it exists
+          IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'DataWarehouse')
+          BEGIN
+              ALTER DATABASE DataWarehouse SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+              DROP DATABASE DataWarehouse;
+          END;
+          GO
+
+          -- Create the DataWarehouse database
+          CREATE DATABASE DataWarehouse;
+          GO
+
+          -- Switch context to the new database
+          USE DataWarehouse;
+          GO
+
+          -- Create Medallion Architecture schemas
+          CREATE SCHEMA bronze;
+          GO
+
+          CREATE SCHEMA silver;
+          GO
+
+          CREATE SCHEMA gold;
+          GO
+
+    3.4.2 SQL Script Mechanics (Deep Dive)
+    --------------------------------------------------------------------
+          a) Why 'USE master;'?
+             In SQL Server, the 'master' system database holds all system-
+             level metadata (logins, server configuration, active sessions, 
+             and metadata for all databases). You must switch to 'master' 
+             before creating or dropping a database to ensure you are not 
+             currently connected to the database being modified.
+
+          b) Why 'GO' after every statement?
+             'GO' is not a standard SQL command; it is a batch separator 
+             recognized by SSMS, sqlcmd, and VS Code SQL tools. It tells 
+             the client tool to send the current batch to the server and 
+             complete its execution before moving to the next statement.
+             * Crucial Rule: In SQL Server, 'CREATE SCHEMA' (and 'CREATE 
+               VIEW') must be the very first statement in a batch. 
+               Without 'GO' between them, SQL Server throws a syntax 
+               error.
+
+          c) Why 'SET SINGLE_USER WITH ROLLBACK IMMEDIATE;'?
+             If any active connections or open queries are currently 
+             using the database, a standard 'DROP DATABASE' command will 
+             fail. Forcing 'SINGLE_USER' mode closes all external 
+             connections and rolls back uncommitted transactions 
+             immediately, allowing the drop operation to proceed cleanly.
+
+    3.4.3 Understanding Schemas & Their Purpose in Data Warehousing
+    --------------------------------------------------------------------
+          a) What is a Schema?
+             A schema is a logical container or "folder" inside a database 
+             used to group related tables, views, stored procedures, and 
+             functions together. Without custom schemas, SQL Server dumps 
+             every object into the default 'dbo' (Database Owner) schema.
+
+          b) Key Benefits of Schemas in a Data Warehouse:
+             i.   Logical Organization (Separation of Concerns):
+                  Instead of mixing dozens of tables in 'dbo', schemas act 
+                  as clean visual containers for each Medallion layer:
+                  - bronze.crm_cust_info  -> Raw table
+                  - silver.crm_cust_info  -> Cleaned & standardized table
+                  - gold.dim_customers    -> Business-ready star schema view
+
+             ii.  Avoiding Naming Collisions:
+                  Tables in Bronze and Silver often share identical names 
+                  (because Silver is the cleaned version of Bronze). SQL 
+                  Server does not allow two tables with the same name in 
+                  the same schema. Placing them in separate schemas 
+                  ('bronze.orders' vs. 'silver.orders') eliminates naming 
+                  conflicts.
+
+             iii. Security & Access Control (Permissions):
+                  Schemas allow centralized permission management rather 
+                  than granting permissions table by table:
+                  - Data Engineers: Read/Write access across all three 
+                    schemas ('bronze', 'silver', 'gold').
+                  - BI Analysts & Power BI: Read-only ('SELECT') access 
+                    granted exclusively to 'gold', preventing them from 
+                    accidentally querying raw, uncurated data in 'bronze'.
+
+    3.4.4 Project Workflow: GitHub Sync & Local File Management
+    --------------------------------------------------------------------
+          a) The Problem:
+             How to save and edit SQL scripts from a custom local working 
+             directory while keeping them continuously tracked and 
+             committed via GitHub Desktop.
+
+          b) The Core Git Rule:
+             GitHub can ONLY track files that physically reside inside 
+             the cloned repository folder. Files stored outside this 
+             directory are completely invisible to Git.
+
+          c) The Shortcut Solution:
+             i.   Locate Local Repo: In GitHub Desktop, right-click the 
+                  repository and select "Show in Explorer".
+             ii.  Store Original File: Save the actual SQL script file 
+                  (e.g., init_database.sql or DWHStarterQueries.sql) 
+                  directly inside the repo folder (e.g., in /scripts/).
+             iii. Create Shortcut: Right-click the file in the repo and 
+                  choose "Create shortcut".
+             iv.  Move Shortcut: Move the shortcut (.lnk) into your 
+                  preferred local working folder.
+             v.   Result: Opening and saving via the shortcut modifies 
+                  the master repository file directly. GitHub Desktop 
+                  instantly detects the changes, ready for commit & push.
+
+    3.4.5 Troubleshooting: Windows Permissions ("Deny Delete") & Git
+    --------------------------------------------------------------------
+          a) Action & Purpose:
+             Applying a "Deny" rule on "Delete" and "Delete subfolders 
+             and files" via Windows Advanced Security Settings on the 
+             local repository folder protects files from accidental 
+             manual deletion in Windows File Explorer.
+
+          b) Impact on Git Operations:
+             Git fundamentally relies on creating, deleting, and 
+             replacing files behind the scenes during branch switching, 
+             pulling changes ('git pull'), stash operations, or clicking 
+             "Discard changes". Blocking file deletion at the OS level 
+             will cause Git commands to fail with fatal access-denied 
+             errors.
+
+          c) How to Revert (When Git Fails):
+             If Git operations fail due to delete restrictions:
+             i.   Right-click the repo folder -> Properties -> Security.
+             ii.  Click "Advanced".
+             iii. Select the "Deny" entry for your user account.
+             iv.  Click "Remove", then "Apply" and "OK" to restore normal 
+                  Git file operations.
+====================================================================
+
+
+
+
