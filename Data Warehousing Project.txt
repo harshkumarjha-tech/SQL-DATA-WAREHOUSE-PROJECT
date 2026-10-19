@@ -1289,18 +1289,19 @@ EPIC 3: PROJECT INITIALIZATION
              the cloned repository folder. Files stored outside this 
              directory are completely invisible to Git.
 
-          c) The Shortcut Solution:
+          c) The Shortcut Solution & Backups:
              i.   Locate Local Repo: In GitHub Desktop, right-click the 
                   repository and select "Show in Explorer".
-             ii.  Store Original File: Save the actual SQL script file 
-                  (e.g., init_database.sql or DWHStarterQueries.sql) 
-                  directly inside the repo folder (e.g., in /scripts/).
-             iii. Create Shortcut: Right-click the file in the repo and 
-                  choose "Create shortcut".
-             iv.  Move Shortcut: Move the shortcut (.lnk) into your 
-                  preferred local working folder.
-             v.   Result: Opening and saving via the shortcut modifies 
-                  the master repository file directly. GitHub Desktop 
+             ii.  Store Original Files: Save the actual SQL script file 
+                  (e.g., DWHStarterQueries.sql) AND your text notes file 
+                  (.txt) directly inside the repo folder.
+             iii. Create Shortcuts: Right-click both the SQL file and the 
+                  TXT file in the repo and choose "Create shortcut" for each.
+             iv.  Move Shortcuts & Backup: Move both shortcuts (.lnk) into your 
+                  preferred local PC project folder. Additionally, keep a separate 
+                  backup copy of the text file in this local PC folder for safety.
+             v.   Result: Opening and saving via the shortcuts modifies 
+                  the master repository files directly. GitHub Desktop 
                   instantly detects the changes, ready for commit & push.
 
     3.4.5 Troubleshooting: Windows Permissions ("Deny Delete") & Git
@@ -1327,6 +1328,7 @@ EPIC 3: PROJECT INITIALIZATION
              iv.  Click "Remove", then "Apply" and "OK" to restore normal 
                   Git file operations.
 ====================================================================
+
 
 
 
