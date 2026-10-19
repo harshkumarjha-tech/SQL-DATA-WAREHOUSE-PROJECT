@@ -1333,6 +1333,117 @@ EPIC 3: PROJECT INITIALIZATION
 4. Build the Bronze Layer  
 ====================================================================
 
+      We will do it step by step:
+      a) Analysing - Interview source system expert:
+         * Who is the source system expert?
+           The person or team who designs, maintains, and understands the 
+           source database/application — such as a Database Administrator 
+           (DBA), Software Engineer, or Application Specialist (e.g., ERP/CRM 
+           Administrator). They know the table schemas, business rules, 
+           update frequencies, and data quirks.
+
+      b) Coding - Data Ingestion.
+
+      c) Validating - Data Completeness & Schema Checks:
+         * Why do we need to check the schema?
+           - Structural Integrity: Confirms column count, names, and data 
+             types match the source files before further processing.
+           - Prevent Schema Drift: Detects unannounced changes from the 
+             source (such as added, renamed, or dropped columns).
+           - Prevent Data Loss: Ensures fields are not silently truncated, 
+             misaligned by delimiter errors, or rejected during downstream 
+             transformations in the Silver and Gold layers.
+
+      d) Documenting - Data documentation & versioning in GIT.
+
+  4.1 ANALYSING - Analyse Source Systems
+  --------------------------------------------------------------------
+
+      To get started with this, we set up a meeting with the source 
+      system expert (e.g., DBA or ERP/CRM Admin) so that we can gather 
+      information about the source system.
+
+    4.1.1 Business Context & Ownership
+    --------------------------------------------------------------------
+          - Who owns the data?
+          - What business process it supports?
+          - System and data documentation?
+          - Data model and data catalog?
+            * Data Model:
+              An architectural blueprint or diagram (like an ER diagram) 
+              illustrating tables, attributes, primary/foreign keys, and 
+              relationships between entities. It helps data engineers understand 
+              how tables connect and map join paths.
+            * Data Catalog:
+              An organized inventory and metadata repository providing business 
+              definitions, descriptions, ownership, and lineage of data assets. 
+              It helps data engineers decipher cryptic table and column names 
+              (e.g., 'PX_CAT_G1V2') and identify sensitive data (PII).
+
+    4.1.2 Architecture & Technology Stack
+    --------------------------------------------------------------------
+          - How the data is stored? (SQL Server, Oracle, AWS, Azure, ...)
+          - What are the integration capabilities? (API, Kafka, File Extract, Direct DB, ...)
+            * API (Application Programming Interface):
+              REST or GraphQL endpoints provided by cloud or web services. 
+              Common in modern SaaS applications (e.g., Salesforce, HubSpot). 
+              Secure and structured, but typically rate-limited and slower for 
+              massive bulk historical extracts.
+            * Kafka (Event Streaming):
+              A distributed publish-subscribe message broker designed for 
+              real-time event streaming. Best suited for continuous high-speed 
+              data flows (e.g., website clicks, financial transactions, IoT) 
+              rather than scheduled batch loads.
+            * File Extract (Flat Files):
+              Scheduled data dumps exported as flat files (CSV, JSON, Parquet) 
+              and placed in a folder, SFTP server, or cloud bucket (S3, Azure Blob). 
+              This is the decoupling method used in our project (CRM and ERP CSV files).
+            * Direct DB (Database Connection):
+              Connecting directly to source database tables or read-replicas 
+              via JDBC, ODBC, or Linked Servers. Offers high speed and direct SQL 
+              querying, but risks table locking and degrading source performance 
+              during business hours.
+
+    4.1.3 Extract & Load
+    --------------------------------------------------------------------
+          - Incremental vs Full Load
+          - Data scope & historical needs
+          - What is the expected size of the extracts?
+          - Are there any data volume limitations?
+          - How to avoid impacting the source system's performance?
+          - Authentication and authorization (tokens, SSH Keys, VPN, IP whitelisting, ...)
+            * Authentication vs. Authorization:
+              - Authentication (AuthN): Verifies identity ("Who are you?"). 
+                Confirms the client or ETL tool is genuine using credentials, 
+                keys, or tokens.
+              - Authorization (AuthZ): Verifies permissions ("What can you access?"). 
+                Determines which specific databases, schemas, tables, or API 
+                endpoints the authenticated user is allowed to read.
+            * Tokens (API Keys & Bearer Tokens):
+              Unique encrypted string keys (such as OAuth 2.0 Bearer tokens or 
+              JWTs) passed in request headers. Enables automated services to 
+              access REST APIs securely without hardcoding or exposing sensitive 
+              passwords.
+            * SSH Keys (Secure Shell Key Pairs):
+              A pair of asymmetric cryptographic keys (public key stored on 
+              the source server, private key held by the ETL client) used 
+              for secure, passwordless authentication, commonly utilized for 
+              automated SFTP batch file ingestion.
+            * VPN (Virtual Private Network):
+              An encrypted communication tunnel connecting the Data Warehouse 
+              environment directly into the source system's private on-premises 
+              network or cloud VPC, shielding in-transit data from exposure on the 
+              public internet.
+            * IP Whitelisting (Allowlisting):
+              A firewall security rule that restricts source system network access 
+              exclusively to pre-approved, static IP addresses (such as our 
+              dedicated ETL or DWH host IP), automatically dropping requests 
+              from all other unknown addresses.
+====================================================================
+
+
+
+
 
 
 
