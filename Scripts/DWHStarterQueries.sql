@@ -19,12 +19,17 @@ WARNING:
 USE master;
 GO
 
--- Drop and recreate the 'DataWarehouse' database
+-- Check if a database named 'DataWarehouse' already exists in the system catalog
 IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'DataWarehouse')
 BEGIN
-    ALTER DATABASE DataWarehouse SET SINGLE_USER WITH ROLLBACK IMMEDIATE; -- Force disconnect all users
+    -- Change access to one user and instantly sever all other active connections 
+    -- to prevent "database is in use" locking errors.
+    ALTER DATABASE DataWarehouse SET SINGLE_USER WITH ROLLBACK IMMEDIATE; 
+    
+    -- Permanently delete the database now that it is safely isolated.
     DROP DATABASE DataWarehouse;
 END
+-- Execute this entire batch of commands before proceeding further.
 GO
 
 -- Create the main DataWarehouse database to store all project objects
