@@ -1441,9 +1441,142 @@ EPIC 3: PROJECT INITIALIZATION
               from all other unknown addresses.
 ====================================================================
 
+  4.2 CODING - Data Ingestion
+  ====================================================================
 
+  4.2.1 Creating DDL for Tables
+  --------------------------------------------------------------------
 
+      Before writing DDL scripts, we first define the properties of 
+      the Bronze layer to understand what we are building:
 
+      - (Definition)          Raw, unprocessed data as-is from sources.
+      - (Objective)           Traceability & Debugging.
+      - (Object Type)         Tables.
+      - (Load Method)         Full Load (Truncate & Insert).
+      - (Data Transformation) No Transformation.
+      - (Data Modeling)       No (as-is).
+      - (Target Audience)     Data Engineers.
 
+    4.2.1.a Understanding the Incoming Data Structure
+    --------------------------------------------------------------------
+          In order to create DDL scripts for the Bronze layer tables, 
+          we first need to understand the metadata, schema, and structure 
+          of the incoming data. We have two options:
+          i.  Ask the technical expert of the source system to explain 
+              its metadata and schema.
+          ii. Explore the incoming CSV files directly and infer the 
+              structure from the data and headers.
 
+          We start with the 1st data source: CRM System.
+          - Open the 1st file: cust_info.csv
+          - Inspect the header row to identify column names.
+          - Read the data contents to infer appropriate data types 
+            for each column.
 
+    4.2.1.b Naming Convention Reminder (See Section 3.2.2)
+    --------------------------------------------------------------------
+          When creating Bronze tables, follow the naming conventions 
+          defined in section 3.2.2:
+          - Pattern: <sourcesystem>_<entity>
+          - Example: crm_cust_info, erp_loc_a101
+
+          The DDL script is saved at:
+          Scripts/bronze/Bronze_Tables_DDL.sql
+
+    ====================================================================
+    NOTE: GITHUB DESKTOP - PUSH, PULL, AND FETCH
+    ====================================================================
+
+        In Git, "origin" is the default nickname for your repository 
+        hosted on GitHub.com. When you see "origin", think "the cloud".
+
+        a) PUSH ORIGIN (Local PC -> Cloud):
+           Uploads your local commits to GitHub.
+           - Use it after making changes in VS Code and committing in 
+             GitHub Desktop. The commit only exists on your local machine 
+             until you push it. Click "Push origin" to send it to the 
+             cloud to back it up and make it visible online.
+
+        b) PULL ORIGIN (Cloud -> Local PC):
+           Downloads new updates from GitHub to your computer.
+           - Use it when the GitHub repository has newer files than 
+             your local folder (e.g., you edited a file directly on 
+             GitHub.com, or worked from a different computer).
+
+        c) FETCH ORIGIN (Radar Sweep):
+           Checks the cloud for new updates without downloading or 
+           changing your local files yet.
+           - Use it to safely check if you are behind. If it detects 
+             new changes, the "Fetch" button automatically turns into 
+             a "Pull" button, ready for you to download them.
+
+  4.2.2 Develop SQL Load Scripts (Data Ingestion via BULK INSERT)
+  --------------------------------------------------------------------
+
+    4.2.2.a What is BULK INSERT?
+    --------------------------------------------------------------------
+          The method used to load data from the source CSV files into 
+          the Bronze layer is BULK INSERT.
+          - It is a high-speed SQL Server operation that loads massive 
+            amounts of data from flat files (CSV, TXT) directly into a 
+            database table in a single bulk operation.
+          - Unlike a classical INSERT that processes one row at a time, 
+            BULK INSERT loads all rows at once, making it extremely fast.
+
+          The SQL script is saved at:
+          Scripts/bronze/Bronze_Tables_DataLoad.sql
+
+    4.2.2.b Post-Load Verification
+    --------------------------------------------------------------------
+          After loading data, the data engineer must verify:
+          i.  Data landed in the correct columns (no column shifts).
+          ii. All rows were inserted (row count matches source file).
+          iii. Delimiter quality is correct — if the delimiter is 
+               incorrect or the CSV quality is bad, fields merge into 
+               one column, producing corrupted data.
+
+    4.2.2.c TRUNCATE Before Each Load
+    --------------------------------------------------------------------
+          A TRUNCATE TABLE statement must be added before each BULK 
+          INSERT.
+          - Without it, every time the load script runs it appends 
+            new data on top of the existing rows, causing duplicates.
+          - TRUNCATE empties the table first, ensuring a clean 
+            Full Load every run.
+
+    ====================================================================
+    NOTE: UNDERSTANDING 'TABLOCK' IN BULK INSERT
+    ====================================================================
+
+        a) What it Does:
+           Using TABLOCK places a single exclusive lock on the entire 
+           table during a BULK INSERT. While data is loading, no other 
+           query can read (SELECT) or write to the table — all other 
+           queries wait until the load finishes.
+
+        b) Why We Use It (The Benefits):
+           i.   Skips Micro-Management: Without TABLOCK, SQL Server places 
+                a tiny lock on every single row it inserts. For millions of 
+                rows, managing millions of individual locks wastes enormous 
+                amounts of memory and CPU.
+           ii.  Maximum Speed: With one table-level lock, SQL Server stops 
+                managing individual rows and writes data to disk as fast 
+                as possible.
+           iii. Minimal Logging: Prevents SQL Server from writing a 
+                transaction log entry for every inserted row, saving 
+                significant disk space and time.
+
+        c) Why Locking the Table is Acceptable Here:
+           In a Data Warehouse, this is the Bronze Layer — the raw staging 
+           area. End-users, analysts, and Power BI reports never query the 
+           Bronze layer directly; they query the final Gold layer. Since no 
+           one is reading raw Bronze tables during load, acquiring a full 
+           table lock for maximum ingestion speed is the best practice.
+
+====================================================================
+
+4.2.3 Build Stored Procedure
+-------------------------------------------
+now the sql file we created to load data from the source to bronze layer contains the logic to bulk insert now we make this into a stored procedutre so thta we can execute it at once 
+so, this stored procedure is my bronze ETL script - so we need to add prints to the stored procedure to track execution , debug issues, and understand its flow , added error handling and time stamps in the procedure to help detect the LOAD time for each tbl and the whole procedure as well 
