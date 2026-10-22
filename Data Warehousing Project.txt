@@ -1653,20 +1653,21 @@ EPIC 3: PROJECT INITIALIZATION
 ====================================================================
 
       We will do it step by step:
-      a) Analysing : Explore & Understand Data.
-      b) Document: Draw Data Integration (Draw.io).
-      c) Coding : Data Cleansing.
-      d) Validating : Data Correctness Checks.
-      e) Documenting: Extend Data Flow (Draw.io).
-      f) Commit Code in Git Repo.
+      a) Explore & Understand the Data.
+      b) Data Cleansing:
+         b.1 Check quality of Bronze data.
+         b.2 Write data transformation SQL scripts.
+         b.3 Insert into the Silver layer.
+      c) Data Correctness Checks.
+      d) Documentation & versioning in Git and commit code in Git repo.
 
-  5.1 ANALYSING : Explore & Understand Data
+  5.1 EXPLORE AND UNDERSTAND THE DATA: Source Systems & Data Model
   --------------------------------------------------------------------
 
       Our data warehouse ingests raw data from two primary source 
       systems: CRM (Customer Relationship Management) and ERP 
       (Enterprise Resource Planning). Below is the breakdown of 
-      each table, its purpose, and key fields.
+      each table, its purpose, and how the entities relate.
 
     5.1.1 CRM Source System (Customer & Sales Operations)
     --------------------------------------------------------------------
@@ -1733,6 +1734,42 @@ EPIC 3: PROJECT INITIALIZATION
           +-------------------------------------------------------------+    |   | cid                |                    |
                                                                              |   +--------------------+                    |
                                                                              +----------------------------------------------+
+  5.3 CODING - Data Cleansing the Silver Layer
+  --------------------------------------------------------------------
+
+    5.3.1 Create DDL for Silver Layer & Add Metadata Columns
+    --------------------------------------------------------------------
+          Metadata columns are extra columns added by data engineers that 
+          do not originate from the source data.
+
+          a) Common Metadata Columns:
+             - create_date   : The record's load timestamp.
+             - update_date   : The record's last update timestamp.
+             - source_system : The source system of the record.
+             - file_location : The file source of the record.
+
+          b) Purpose & Benefits:
+             i.   Solve Data Issues: If there is corrupt data in the data 
+                  warehouse, these columns help track where and when the 
+                  issue happened.
+             ii.  Detect Data Gaps: Useful to understand whether there 
+                  is a gap in data, especially when performing incremental loads.
+
+          c) Naming Convention:
+             For the new columns, use the naming convention:
+             - Pattern: dwh_<colname> (e.g., dwh_create_date)
+
+    5.3.2 Clean & Load Data into the Silver Layer
+    --------------------------------------------------------------------
+          For each table, check for NULLs or duplicates in the primary key.
 
 ====================================================================
+
+
+
+
+
+
+
+
 
