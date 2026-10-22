@@ -1600,3 +1600,139 @@ EPIC 3: PROJECT INITIALIZATION
          duration of the entire procedure.
 
 ====================================================================
+
+  4.3 VALIDATING - Data Completeness & Schema Checks
+  --------------------------------------------------------------------
+
+      After executing the stored procedure, we validate that the data 
+      loaded into the Bronze layer is correct and complete.
+
+      a) Row Count Check:
+         Verify that the number of rows loaded into each Bronze table 
+         matches the number of records in the corresponding source CSV 
+         (Source CSV line count - 1 header row = expected Bronze row count).
+
+      b) Column Alignment Check:
+         Confirm data landed in the correct columns with no shifts — 
+         a delimiter mismatch causes fields to merge or shift across columns.
+
+      c) Procedure Execution Result:
+         Review the PRINT output from the stored procedure to verify 
+         each table loaded without errors and confirm the load duration 
+         per table and for the full batch.
+
+  4.4 DOCUMENTING & VERSIONING IN GIT
+  --------------------------------------------------------------------
+
+      a) Data Pipeline Diagram (Draw.io):
+         Created a visual diagram of the data pipeline using Draw.io, 
+         illustrating the flow:
+         Source Systems (CRM & ERP CSV) -> Bronze Layer Tables -> 
+         Stored Procedure (load_bronze).
+
+      b) Documentation:
+         Written documentation describing the Bronze layer structure, 
+         table definitions, load method, and pipeline design.
+
+  4.5 COMMIT CODE IN GIT REPO
+  --------------------------------------------------------------------
+
+      All files are committed and pushed to the GitHub repository:
+      - Bronze DDL script   (Scripts/bronze/Bronze_Tables_DDL.sql)
+      - Bronze Load script  (Scripts/bronze/Bronze_Tables_DataLoad.sql)
+      - Data pipeline diagram (Docs/)
+      - Project notes       (Data Warehousing Project.txt)
+
+      Commit Message:
+      "feat: complete bronze layer - DDL, stored procedure, validation & documentation"
+
+====================================================================
+
+====================================================================
+5. BUILD THE SILVER LAYER
+====================================================================
+
+      We will do it step by step:
+      a) Analysing : Explore & Understand Data.
+      b) Document: Draw Data Integration (Draw.io).
+      c) Coding : Data Cleansing.
+      d) Validating : Data Correctness Checks.
+      e) Documenting: Extend Data Flow (Draw.io).
+      f) Commit Code in Git Repo.
+
+  5.1 ANALYSING : Explore & Understand Data
+  --------------------------------------------------------------------
+
+      Our data warehouse ingests raw data from two primary source 
+      systems: CRM (Customer Relationship Management) and ERP 
+      (Enterprise Resource Planning). Below is the breakdown of 
+      each table, its purpose, and key fields.
+
+    5.1.1 CRM Source System (Customer & Sales Operations)
+    --------------------------------------------------------------------
+          - crm_sales_details:
+            * Description: Transactional records covering orders and sales.
+            * Key Fields:  prd_key (links to products), 
+                           cst_id  (links to customers).
+
+          - crm_prd_info:
+            * Description: Current and historical product information.
+            * Key Fields:  prd_key (unique product identifier).
+
+          - crm_cust_info:
+            * Description: Core customer information.
+            * Key Fields:  cst_id, cst_key (unique identifiers for linking).
+
+    5.1.2 ERP Source System (Enterprise & Reference Data)
+    --------------------------------------------------------------------
+          - erp_px_cat_g1v2:
+            * Description: Product categories and subcategories lookup data.
+            * Key Fields:  id (links to product catalog data).
+
+          - erp_cust_az12:
+            * Description: Supplementary customer demographic information 
+                           (e.g., birthdate).
+            * Key Fields:  cid (links to customer data keys).
+
+          - erp_loc_a101:
+            * Description: Customer geographic information (country location).
+            * Key Fields:  cid (links to customer data keys).
+
+  5.2 DOCUMENT: Draw Data Integration (Draw.io)
+  --------------------------------------------------------------------
+
+      A visual diagram of the data integration model created in Draw.io, 
+      illustrating the source systems (CRM & ERP), their entity relationships, 
+      and primary/foreign key connections:
+
+          +-------------------------------------------------------------+    +----------------------------------------------+
+          |                      CRM  SYSTEM                           |    |                  ERP  SYSTEM                |
+          |                                                             |    |                                              |
+          |  +----------------------+                                   |    |   +--------------------+                    |
+          |  | crm_sales_details    |                                   |    |   | erp_px_cat_g1v2    |                    |
+          |  | Transactional records|----prd_key--+                     |    |   | Product Categories |                    |
+          |  | about Sales & Orders |             |                     |    |   |--------------------|                    |
+          |  |----------------------|             |                     |    |   | id                 |                    |
+          |  | prd_key              |             v                     |    |   +--------------------+                    |
+          |  | cst_id               |   +-----------------------+       |    |            ^                                 |
+          |  +----------------------+   | crm_prd_info          |-------+----+---------prd_key                             |
+          |             |               | Current & History     |       |    |                                              |
+          |             |               | Product Information   |       |    |   +--------------------+                    |
+          |             |               |-----------------------|       |    |   | erp_cust_az12      |                    |
+          |             |               | prd_key               |       |    |   | Extra Customer Info|                    |
+          |             |               +-----------------------+       |    |   | (Birthdate)        |                    |
+          |             |                                               |    |   |--------------------|                    |
+          |             |               +-----------------------+       |    |   | cid                |                    |
+          |             +----cst_id---> | crm_cust_info         |-------+----+----------cst_key/cid-->+                    |
+          |                             | Customer Information  |       |    |                                              |
+          |                             |-----------------------|       |    |   +--------------------+                    |
+          |                             | cst_id                |       |    |   | erp_loc_a101       |                    |
+          |                             | cst_key               |-------+----+-> | Location of        |                    |
+          |                             +-----------------------+       |    |   | Customers (Country)|                    |
+          |                                                             |    |   |--------------------|                    |
+          +-------------------------------------------------------------+    |   | cid                |                    |
+                                                                             |   +--------------------+                    |
+                                                                             +----------------------------------------------+
+
+====================================================================
+
