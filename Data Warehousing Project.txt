@@ -1576,7 +1576,27 @@ EPIC 3: PROJECT INITIALIZATION
 
 ====================================================================
 
-4.2.3 Build Stored Procedure
--------------------------------------------
-now the sql file we created to load data from the source to bronze layer contains the logic to bulk insert now we make this into a stored procedutre so thta we can execute it at once 
-so, this stored procedure is my bronze ETL script - so we need to add prints to the stored procedure to track execution , debug issues, and understand its flow , added error handling and time stamps in the procedure to help detect the LOAD time for each tbl and the whole procedure as well 
+  4.2.3 Build Stored Procedure
+  --------------------------------------------------------------------
+
+      The SQL script created to load data from the source into the 
+      Bronze layer contains the BULK INSERT logic. We now wrap this 
+      into a Stored Procedure so it can be executed with a single call.
+
+      This stored procedure is the Bronze ETL script. The following 
+      features are added to it:
+
+      a) PRINT Statements:
+         Added at key steps to track execution progress, debug issues, 
+         and understand the flow of the procedure during runtime.
+
+      b) Error Handling (TRY...CATCH):
+         Wraps the logic to catch any runtime failures, print a 
+         descriptive error message, and prevent silent pipeline failures.
+
+      c) Timestamps & Load Duration:
+         GETDATE() and DATEDIFF() are used to capture and print the 
+         load time for each individual table as well as the total 
+         duration of the entire procedure.
+
+====================================================================

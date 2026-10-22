@@ -1,12 +1,22 @@
--- Switches the active connection to your specific database
+-- Switches the active connection to your specific database so you don't 
+-- accidentally create this procedure in the 'master' system database.
 USE [DataWarehouse]
 GO
 
+-- Auto-generated timestamp and tracking comment from SSMS.
+/****** Object:  StoredProcedure [Bronze].[load_bronze]    Script Date: 21-10-2026 16:57:21 ******/
+
 -- Enforces strict SQL standards for how NULL values are handled.
+-- When ON, comparing a value to NULL using an equals sign (e.g., column = NULL) 
+-- will fail. You are forced to write proper syntax (e.g., column IS NULL).
+-- Always leave this ON.
 SET ANSI_NULLS ON
 GO
 
 -- Enforces strict SQL standards for quotation marks.
+-- When ON, double quotes (" ") or square brackets ([ ]) are strictly used to wrap 
+-- table/column names (identifiers), and single quotes (' ') are strictly used 
+-- for text strings. Always leave this ON.
 SET QUOTED_IDENTIFIER ON
 GO
 
