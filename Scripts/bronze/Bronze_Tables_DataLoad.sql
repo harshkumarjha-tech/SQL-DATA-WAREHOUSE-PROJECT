@@ -36,8 +36,29 @@ Keywords Explained:
     - TRY...CATCH: A structural error-handling block. If any error happens inside 
       the TRY block, the code instantly stops and jumps to the CATCH block to 
       report the error cleanly instead of crashing the whole system.
+    - DECLARE: Creates temporary local variables (like @start_time) to store 
+      values during the script's execution.
+    - SET: Assigns a specific value or the result of a function to a variable.7
     - GETDATE(): A system function that captures the exact current date and time.
-    - DATEDIFF(): Calculates the difference between two timestamps (e.g., in seconds).
+    - DATEDIFF(): Calculates the difference between two timestamps (e.g., measuring 
+      elapsed time in seconds).
+    - CAST(): Converts a value from one data type to another (e.g., turning a 
+      numeric time difference into a text string so it can be appended to a message).
+    - PRINT: Outputs a custom text message to the messages console, which is 
+      highly useful for logging script progress.
+    - TRUNCATE TABLE: Instantly wipes all existing data rows from a table without 
+      deleting the table's structure. It uses fewer system resources and is much 
+      faster than a standard DELETE statement.
+    - BULK INSERT: A highly optimized SQL command to read a physical file from 
+      your local drive and rapidly ingest its contents into a database table.
+    - WITH: Used alongside BULK INSERT to specify a list of formatting options 
+      for the file being loaded.
+    - FIRSTROW: An option that dictates which line of the file to start reading 
+      from. Setting it to 2 skips the column headers.
+    - FIELDTERMINATOR: Identifies the character used to separate columns in your 
+      source file (e.g., ',' for CSV files).
+    - TABLOCK: Places a temporary lock on the entire table during the insert. 
+      This bypasses row-by-row micro-management and drastically speeds up the load.
 ===============================================================================
 */
 
