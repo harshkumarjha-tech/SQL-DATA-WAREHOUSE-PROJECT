@@ -1761,7 +1761,175 @@ EPIC 3: PROJECT INITIALIZATION
 
     5.3.2 Clean & Load Data into the Silver Layer
     --------------------------------------------------------------------
-          For each table, check for NULLs or duplicates in the primary key.
+          For each table, the following data quality checks and
+          transformations were applied before loading into the Silver Layer:
+
+          5.3.2 (a). These transformations are for bronze.crm_cust_info
+          --------------------------------------------------------------------
+          a) Primary Key Validation:
+             - Checked for NULLs or duplicates in the primary key column.
+
+          b) Unwanted Spaces:
+             - Checked for unwanted spaces within text columns (e.g., names,
+               products) using the logic: col != TRIM(col).
+             - Cleaning logic was added directly to the load query, so a
+               single query handles NULLs, duplicates, and extra spaces.
+
+          c) Low-Cardinality Columns (Standardization):
+             - Checked values in columns with low cardinality such as
+               gender and marital_status.
+             - In our data warehouse, we aim to store clear and meaningful
+               values rather than using abbreviated terms.
+             - Default value set to 'N/A' to replace any NULL values.
+
+          d) Date Columns:
+             - Dates are converted to the DATE datatype if not already.
+             - If the DDL already defines the column as DATE, no ETL
+               conversion is needed; otherwise, cast via ETL script.
+
+          e) Transformations Applied (Summary):
+             At last, the data was loaded into the Silver Layer with all
+             the following transformations applied to bronze.crm_cust_info:
+             1. Removed unwanted spaces
+             2. Data normalization & standardization
+             3. Handling missing data (NULL → 'N/A')
+             4. Removed duplicates
+
+          5.3.2 (b). These transformations are for bronze.crm_prd_info
+          --------------------------------------------------------------------
+          For each column in bronze.crm_prd_info, the following data quality
+          checks and transformations were applied:
+
+          a) Primary Key Validation:
+             - Checked for NULLs or duplicates in prd_id (primary key).
+
+          b) Composite Key Extraction (prd_key):
+             - The raw prd_key column contains two pieces of information:
+               * Characters 1–5 : Category ID (cat_id)
+               * Characters 7+  : Actual Product Key (prd_key)
+             - SUBSTRING() was used to split them into separate columns.
+             - REPLACE('-', '_') was applied to cat_id so it matches the
+               format used in bronze.erp_px_cat_g1v2 for joining.
+             - Extracted prd_key was validated against bronze.crm_sales_details
+               to detect any products not present in the sales table.
+
+          c) Unwanted Spaces:
+             - Checked prd_nm for hidden leading/trailing spaces using
+               the logic: prd_nm != TRIM(prd_nm).
+             - Expectation: No results (no spaces found).
+
+          d) Cost Validation & Handling:
+             - Checked for negative and NULL values in prd_cost.
+             - Business rule: cost cannot be negative or NULL.
+             - Solution: Replaced both negative values and NULLs with 0
+               using a CASE statement.
+
+          e) Low-Cardinality Column (Standardization — prd_line):
+             - prd_line contains single-letter abbreviations from the source.
+             - Mapped to full descriptive names using a CASE statement:
+               * 'M' → 'Mountain'
+               * 'R' → 'Road'
+               * 'S' → 'Other Sales'
+               * 'T' → 'Touring'
+               * Any other value → 'n/a'
+
+          f) Date Columns & SCD Type 2 Date Correction:
+             - Raw start and end dates were invalid (e.g., start > end,
+               overlapping date ranges for the same product).
+             - Solution:
+               * Kept the original prd_start_dt, cast to DATE.
+               * Used LEAD() window function (partitioned by prd_key,
+                 ordered by prd_start_dt) to look ahead and find the
+                 next record's start date for the same product.
+               * prd_end_dt was derived as: LEAD(prd_start_dt) - 1 day,
+                 creating clean, non-overlapping historical date ranges.
+               * Both dates cast to DATE to remove unnecessary time parts.
+
+          g) Transformations Applied (Summary):
+             Data was loaded into silver.crm_prd_info with all the
+             following transformations applied to bronze.crm_prd_info:
+             1. Composite key split into cat_id and prd_key
+             2. Category ID formatted (dash replaced with underscore)
+             3. Removed unwanted spaces (TRIM on text columns)
+             4. Fixed invalid cost values (negatives & NULLs → 0)
+             5. Data standardization (prd_line abbreviations → full names)
+             6. Date correction using LEAD() for SCD Type 2 date ranges
+             7. Cast date columns to DATE datatype
+
+          5.3.2 (c). These transformations are for bronze.crm_sales_details
+          --------------------------------------------------------------------
+          For each column in bronze.crm_sales_details, the following data
+          quality checks and transformations were applied:
+
+          a) Referential Integrity Check (Product Key):
+             - Verified that every sls_prd_key exists in silver.crm_prd_info.
+             - Expectation: No results (0 rows) — no "ghost" products in sales.
+
+          b) Referential Integrity Check (Customer ID):
+             - Verified that every sls_cust_id exists in silver.crm_cust_info.
+             - Expectation: No results — every sale must be tied to a valid customer.
+
+          c) Invalid Date Format Check (sls_order_dt, sls_ship_dt, sls_due_dt):
+             - Dates are stored as integers in YYYYMMDD format in the source.
+             - Checked for invalid values using these rules:
+               * Value = 0 (missing/placeholder)
+               * Length != 8 digits
+               * Value > 20500101 (unreasonably far in the future)
+               * Value < 19000101 (unreasonably far in the past)
+             - NULLIF() used to replace zero-value dates with NULL.
+
+          d) Logical Date Constraint Check:
+             - Checked that order date does not occur AFTER the ship date
+               or after the due date.
+             - Expectation: No results (0 rows).
+
+          e) Business Logic & Measure Validation (Sales = Quantity x Price):
+             - Identified rows where the core math fails:
+               sls_sales != sls_quantity * sls_price.
+             - Also checked for NULLs and zero/negative values in
+               sls_sales, sls_quantity, and sls_price.
+             - Resolution rules applied in the final load:
+               * If sls_sales is bad  -> derive as: sls_quantity * ABS(sls_price)
+               * If sls_price is bad  -> derive as: sls_sales / NULLIF(sls_quantity, 0)
+               * If sls_price < 0     -> convert to positive using ABS()
+               * NULLIF(sls_quantity, 0) prevents a fatal divide-by-zero error.
+
+          f) Date Conversion (INT to DATE):
+             - All three date columns (order, ship, due) stored as integers
+               were converted using a two-step cast:
+               INT -> VARCHAR('YYYYMMDD') -> DATE
+             - Dates failing the validity rules in (c) were set to NULL.
+
+          g) Transformations Applied (Summary):
+             Data was loaded into silver.crm_sales_details with all the
+             following transformations applied to bronze.crm_sales_details:
+             1. Referential integrity validated against silver product & customer tables
+             2. Invalid integer dates replaced with NULL
+             3. Date columns converted from INT (YYYYMMDD) to DATE datatype
+             4. Recalculated sls_sales where missing, negative, or mathematically wrong
+             5. Recalculated sls_price where missing or <= 0
+             6. Negative prices converted to positive using ABS()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ====================================================================
 

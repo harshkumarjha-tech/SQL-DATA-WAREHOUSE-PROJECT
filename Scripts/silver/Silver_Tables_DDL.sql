@@ -1,3 +1,5 @@
+use [DataWarehouse]
+
 /*
 ===============================================================================
 DDL Script: Create Silver Layer Tables
@@ -27,7 +29,7 @@ CREATE TABLE silver.crm_cust_info (
     cst_key NVARCHAR(50),
     cst_firstname NVARCHAR(50),
     cst_lastname NVARCHAR(50),
-    cst_material_status NVARCHAR(50),
+    cst_marital_status NVARCHAR(50),
     cst_gndr NVARCHAR(50),
     cst_create_date DATE,
     dwh_create_date DATETIME2 DEFAULT GETDATE()
@@ -44,12 +46,13 @@ GO
 
 CREATE TABLE silver.crm_prd_info (
     prd_id INT,
-    prd_key NVARCHAR(50),
+    cat_id NVARCHAR(50),   -- NEW: Extracted category ID (e.g., 'CG_12')
+    prd_key NVARCHAR(50),  -- UPDATED: Now only stores the actual product key part
     prd_nm NVARCHAR(50),
     prd_cost INT,
-    prd_line NVARCHAR(5),
-    prd_start_dt DATETIME,
-    prd_end_dt DATETIME,
+    prd_line NVARCHAR(50), -- UPDATED: Expanded from (5) to (50) to hold full names like 'Other Sales' or 'Mountain'
+    prd_start_dt DATE,     -- UPDATED: Changed from DATETIME to DATE based on your casting
+    prd_end_dt DATE,       -- UPDATED: Changed from DATETIME to DATE based on your casting
     dwh_create_date DATETIME2 DEFAULT GETDATE()
 );
 GO
@@ -66,9 +69,9 @@ CREATE TABLE silver.crm_sales_details (
     sls_ord_num NVARCHAR(50),
     sls_prd_key NVARCHAR(50),
     sls_cust_id INT,
-    sls_order_dt INT,    
-    sls_ship_dt INT,
-    sls_due_dt INT,
+    sls_order_dt DATE,    
+    sls_ship_dt DATE,
+    sls_due_dt DATE,
     sls_sales INT,
     sls_quantity INT,
     sls_price INT,
