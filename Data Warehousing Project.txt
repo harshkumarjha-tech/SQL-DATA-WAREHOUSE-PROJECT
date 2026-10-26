@@ -1910,34 +1910,320 @@ EPIC 3: PROJECT INITIALIZATION
              5. Recalculated sls_price where missing or <= 0
              6. Negative prices converted to positive using ABS()
 
+          5.3.2 (d). These transformations are for bronze.erp_cust_az12
+          --------------------------------------------------------------------
+          For each column in bronze.erp_cust_az12, the following data quality
+          checks and transformations were applied:
 
+          a) Key Formatting & Prefix Stripping (cid):
+             - The ERP system appends an arbitrary 'NAS' prefix to some customer 
+               IDs (e.g., 'NAS00123').
+             - This prevents direct joining with the customer master table 
+               in CRM (silver.crm_cust_info).
+             - Solution: Used SUBSTRING() within a CASE statement:
+               WHEN cid LIKE 'NAS%' THEN SUBSTRING(cid, 4, LEN(cid)) ELSE cid.
+             - Strips the 3-letter prefix, extracting from character 4 onwards.
 
+          b) Referential Integrity Check (ERP to CRM Mapping):
+             - Verified that every cleaned cid exists in silver.crm_cust_info 
+               (cst_key column).
+             - Query: WHERE cleaned cid NOT IN (SELECT DISTINCT cst_key FROM silver.crm_cust_info).
+             - Expectation: No results (0 rows) -- ensures no orphaned customer 
+               demographics exist in ERP.
 
+          c) Invalid Date Format & Boundary Check (bdate):
+             - Checked for birthdates occurring in the future (bdate > GETDATE()) 
+               and dates unrealistically far in the past (bdate < '1924-01-01').
+             - Solution: Implemented a CASE statement:
+               WHEN bdate > GETDATE() THEN NULL ELSE bdate.
+             - Replaces impossible future dates with NULL while preserving valid 
+               historical dates.
 
+          d) Low-Cardinality Standardization (Gender - gen):
+             - Raw gender data contained multiple variations, abbreviations, 
+               and inconsistent casing (e.g., 'F', 'FEMALE', 'M', 'MALE', blanks, NULLs).
+             - Mapped to standardized, descriptive categories using UPPER(TRIM()) 
+               and IN():
+               * 'F', 'FEMALE' -> 'Female'
+               * 'M', 'MALE'   -> 'Male'
+               * All other values, blanks, or NULLs -> 'n/a'
 
+          e) Transformations Applied (Summary):
+             Data was loaded into silver.erp_cust_az12 with all the 
+             following transformations applied to bronze.erp_cust_az12:
+             1. Stripped arbitrary 'NAS' prefix from customer ID (cid)
+             2. Validated referential integrity against CRM customer keys (cst_key)
+             3. Handled invalid and future birthdates (set to NULL)
+             4. Standardized gender values to 'Female', 'Male', or 'n/a'
 
+          5.3.2 (e). These transformations are for bronze.erp_loc_a101
+          --------------------------------------------------------------------
+          For each column in bronze.erp_loc_a101, the following data quality
+          checks and transformations were applied:
 
+          a) Key Formatting & Hyphen Removal (cid):
+             - Found customer IDs containing hyphens (e.g., 'AW-00011000' or 
+               similar formatted keys with '-').
+             - Hyphens prevent primary/foreign key connections with 
+               crm_cust_info (cst_key).
+             - Solution: Applied REPLACE(TRIM(cid), '-', '') to remove all 
+               hyphens, enabling seamless joins with the customer master table.
 
+          b) Data Consistency & Standardization (Country - cntry):
+             - Distinct profiling of cntry revealed multiple variations, 
+               abbreviations, casing issues, blanks, and NULLs:
+               * 'USA', 'US', 'UNITED STATES' represent the same country.
+               * 'DE' represents Germany.
+               * Missing values (NULL or empty string '').
+             - Solution: Mapped all variations using UPPER(TRIM()) and CASE:
+               * 'USA', 'US', 'UNITED STATES' -> 'United States'
+               * 'DE'                         -> 'Germany'
+               * NULL or empty string ''      -> 'n/a'
+               * All other values             -> TRIM(cntry)
 
+          c) Transformations Applied (Summary):
+             Data was loaded into silver.erp_loc_a101 with all the 
+             following transformations applied to bronze.erp_loc_a101:
+             1. Stripped hyphens from customer ID (cid) using REPLACE()
+             2. Standardized country abbreviations and names to uniform format
+             3. Handled missing data by converting NULLs and empty strings to 'n/a'
+             4. Removed unwanted leading and trailing whitespace
 
+          5.3.2 (f). These transformations are for bronze.erp_px_cat_g1v2
+          --------------------------------------------------------------------
+          For each column in bronze.erp_px_cat_g1v2, the following data quality
+          checks and profiling steps were applied:
 
+          a) Primary Key & Dimension Alignment (id vs cat_id):
+             - Cross-referenced distinct id values against cat_id in 
+               silver.crm_prd_info.
+             - Verified that all product category IDs match the extracted 
+               category keys from the CRM product table.
+             - Observation: IDs aligned completely, confirming seamless 
+               dimensional joining.
 
+          b) Unwanted Spaces Check:
+             - Inspected cat, subcat, and maintenance text columns for hidden 
+               leading or trailing spaces using:
+               cat != TRIM(cat) OR subcat != TRIM(subcat) OR maintenance != TRIM(maintenance).
+             - Expectation / Result: 0 rows returned (no whitespace issues found).
 
+          c) Data Consistency & Normalization:
+             - Verified distinct values for category (cat), subcategory (subcat), 
+               and maintenance flag.
+             - Confirmed casing and naming conventions were fully consistent 
+               with no typos, unexpected values, or corrupted entries.
 
+          d) Transformations Applied (Summary):
+             Data was loaded into silver.erp_px_cat_g1v2 with all the 
+             following profiling and verification applied to bronze.erp_px_cat_g1v2:
+             1. Verified category key alignment against silver product table
+             2. Verified absence of unwanted spaces across all text columns
+             3. Verified domain value consistency for categories and maintenance flags
+             4. Direct clean ingestion into the Silver layer
 
+    5.3.3 Build Stored Procedure for Silver Layer Data Load
+    --------------------------------------------------------------------
 
+          All data cleaning, transformations, deduplication, and insertion 
+          logic for both CRM and ERP source systems are consolidated into a 
+          single, automated Stored Procedure: silver.load_silver.
 
+          This stored procedure serves as the centralized Silver ETL script, 
+          allowing the entire Silver layer to be loaded and refreshed with 
+          a single command:
+          EXEC silver.load_silver;
 
+          The SQL script is saved at:
+          Scripts/silver/Silver_Tables_DataLoad.sql
 
+          Key features implemented in the stored procedure:
 
+          a) TRUNCATE Before Insertion (Clean Full Load):
+             - Every Silver table is truncated (TRUNCATE TABLE) before 
+               new data is inserted.
+             - This guarantees idempotency: the procedure can be run safely 
+               multiple times without creating duplicate rows or stale data.
+
+          b) Execution Tracking & Progress Logging:
+             - Clear PRINT statements are embedded throughout the procedure 
+               to provide real-time visibility during pipeline execution.
+             - Distinct section banners for 'Loading CRM Tables' and 
+               'Loading ERP Tables'.
+             - Explicit action markers for each table:
+               * '>> Truncating Table: silver.<table_name>'
+               * '>> Inserting Data Into: silver.<table_name>'
+               * '>> Load Duration: <time> ms'
+
+          c) Batch & Table-Level Duration Metrics:
+             - Uses local variables (@start_time, @end_time, @batch_start_time, 
+               @batch_end_time) with GETDATE().
+             - Captures load duration for each individual table in milliseconds 
+               using DATEDIFF(millisecond, @start_time, @end_time).
+             - Computes and logs the total batch duration in seconds 
+               using DATEDIFF(second, @batch_start_time, @batch_end_time), 
+               providing immediate performance benchmarks.
+
+          d) Error Handling (TRY...CATCH Block):
+             - The entire execution is wrapped inside a BEGIN TRY ... END TRY 
+               block paired with a BEGIN CATCH ... END CATCH handler.
+             - If any error occurs during truncation or insertion, execution 
+               halts cleanly and prints detailed diagnostic information:
+               * Error Message : ERROR_MESSAGE()
+               * Error Number  : ERROR_NUMBER()
+               * Error State   : ERROR_STATE()
+             - Prevents partial or silent pipeline failures and simplifies 
+               debugging in automated orchestration environments.
 
 ====================================================================
 
+  5.4 VALIDATING - Data Correctness Checks
+  --------------------------------------------------------------------
 
+      After executing the stored procedure (silver.load_silver), 
+      comprehensive validation queries are executed against each table 
+      in the Silver layer. The objective is to verify that all data 
+      quality issues identified during Bronze profiling were successfully 
+      resolved and that the Silver layer contains clean, reliable data.
 
+    5.4.1 Validation Checks for silver.crm_cust_info
+    --------------------------------------------------------------------
+          a) Primary Key NULL Check:
+             - Query: SELECT * FROM silver.crm_cust_info WHERE cst_id IS NULL;
+             - Expectation: 0 rows (confirms NULL filter dropped invalid records).
 
+          b) Primary Key Duplicate Check:
+             - Query: GROUP BY cst_id HAVING COUNT(*) > 1;
+             - Expectation: 0 rows (confirms deduplication via CTE and 
+               ROW_NUMBER() succeeded).
 
+          c) Known Duplicate Resolution Check:
+             - Inspected known duplicate customer IDs (e.g., ID 29449).
+             - Expectation: Exactly 1 row retained, keeping the record 
+               with the most recent cst_create_date.
 
+          d) Whitespace Check:
+             - Query: WHERE cst_firstname != TRIM(cst_firstname) 
+                      OR cst_gndr != TRIM(cst_gndr);
+             - Expectation: 0 rows (confirms TRIM() stripped all hidden spaces).
 
+          e) Low-Cardinality Standardization Check:
+             - Query: SELECT DISTINCT cst_gndr, cst_marital_status;
+             - Expectation: Only returns standardized values:
+               * Gender: 'Male', 'Female', 'n/a'
+               * Marital Status: 'Single', 'Married', 'n/a'
 
+    5.4.2 Validation Checks for silver.crm_prd_info
+    --------------------------------------------------------------------
+          a) Primary Key Validation:
+             - Verified prd_id has 0 NULLs and 0 duplicates 
+               (GROUP BY prd_id HAVING COUNT(*) > 1 returns 0 rows).
 
+          b) Composite Key Extraction Validation:
+             - Query: WHERE cat_id IS NULL OR TRIM(cat_id) = '' 
+                         OR prd_key IS NULL OR TRIM(prd_key) = '';
+             - Expectation: 0 rows (confirms SUBSTRING and REPLACE properly 
+               split cat_id and prd_key).
+
+          c) Whitespace Check:
+             - Query: WHERE prd_nm != TRIM(prd_nm);
+             - Expectation: 0 rows (confirms product names are clean).
+
+          d) Cost Non-Negativity & NULL Check:
+             - Query: WHERE prd_cost < 0 OR prd_cost IS NULL;
+             - Expectation: 0 rows (confirms negative costs and NULLs 
+               were successfully replaced with 0).
+
+          e) Product Line Standardization Check:
+             - Query: SELECT DISTINCT prd_line FROM silver.crm_prd_info;
+             - Expectation: Returns only full descriptive names:
+               'Mountain', 'Road', 'Other Sales', 'Touring', 'n/a' 
+               (no single-letter codes 'M', 'R', 'S', 'T' remain).
+
+          f) Historical Date Range & SCD Type 2 Validation:
+             - Query: WHERE prd_end_dt < prd_start_dt;
+             - Expectation: 0 rows (confirms LEAD() logic produced clean, 
+               logical, non-overlapping historical date ranges).
+
+    5.4.3 Validation Checks for silver.crm_sales_details
+    --------------------------------------------------------------------
+          a) Referential Integrity (Orphan Checks):
+             - Product Key Orphan Check:
+               WHERE sls_prd_key NOT IN (SELECT prd_key FROM silver.crm_prd_info);
+               Expectation: 0 rows (all sales link to valid products).
+             - Customer ID Orphan Check:
+               WHERE sls_cust_id NOT IN (SELECT cst_id FROM silver.crm_cust_info);
+               Expectation: 0 rows (all sales link to valid customers).
+
+          b) Date Format & Range Validity Check:
+             - Verified order, ship, and due dates converted from INT 
+               (YYYYMMDD) to DATE datatype.
+             - Confirmed placeholder 0s, lengths != 8, and dates outside 
+               1900-2050 were converted to NULL.
+
+          c) Chronological Date Constraint Check:
+             - Query: WHERE sls_order_dt > sls_ship_dt 
+                         OR sls_order_dt > sls_due_dt;
+             - Expectation: 0 rows (order date never occurs after ship or due date).
+
+          d) Business Logic & Measure Validation (Sales = Quantity x Price):
+             - Query: WHERE sls_sales != sls_quantity * sls_price 
+                         OR sls_sales IS NULL OR sls_quantity IS NULL OR sls_price IS NULL
+                         OR sls_sales <= 0 OR sls_quantity <= 0 OR sls_price <= 0;
+             - Expectation: 0 rows (confirms sales math is consistent, 
+               negative prices converted via ABS(), and bad values derived).
+
+    5.4.4 Validation Checks for silver.erp_cust_az12
+    --------------------------------------------------------------------
+          a) Key Prefix Removal Validation:
+             - Query: SELECT cid FROM silver.erp_cust_az12 WHERE cid LIKE 'NAS%';
+             - Expectation: 0 rows (confirms 'NAS' prefix was stripped from all IDs).
+
+          b) Referential Integrity Check (ERP to CRM):
+             - Query: WHERE cid NOT IN (SELECT DISTINCT cst_key FROM silver.crm_cust_info);
+             - Expectation: 0 rows (confirms all ERP customer IDs match valid CRM customers).
+
+          c) Birthdate Boundary & Format Check:
+             - Query: WHERE bdate > GETDATE() OR bdate < '1924-01-01';
+             - Expectation: 0 rows (confirms impossible future dates were nullified).
+
+          d) Gender Standardization & Unmapped Values Check:
+             - Query: WHERE gen NOT IN ('Male', 'Female', 'n/a') OR gen IS NULL;
+             - Expectation: 0 rows (confirms raw codes 'F', 'FEMALE', 'M', 'MALE' 
+               were cleanly standardized into 'Female', 'Male', or 'n/a').
+
+    5.4.5 Validation Checks for silver.erp_loc_a101
+    --------------------------------------------------------------------
+          a) Key Hyphen Removal Validation:
+             - Query: SELECT cid FROM silver.erp_loc_a101 WHERE cid LIKE '%-%';
+             - Expectation: 0 rows (confirms all hyphens were removed from cid).
+
+          b) Country Standardization Validation:
+             - Query: SELECT DISTINCT cntry FROM silver.erp_loc_a101 ORDER BY cntry;
+             - Expectation: Returns only standardized values:
+               'Germany', 'United States', 'n/a'.
+
+          c) Unmapped Country Values & Case-Sensitivity Check:
+             - Query: WHERE cntry COLLATE SQL_Latin1_General_CP1_CS_AS 
+                            IN ('USA', 'US', 'DE', 'UNITED STATES')
+                         OR cntry IS NULL OR TRIM(cntry) = '';
+             - Expectation: 0 rows (case-sensitive check confirms all abbreviations 
+               and blanks were replaced).
+
+    5.4.6 Validation Checks for silver.erp_px_cat_g1v2
+    --------------------------------------------------------------------
+          a) Row Count Completeness Check:
+             - Query: Compares COUNT(*) from bronze.erp_px_cat_g1v2 
+                      with COUNT(*) from silver.erp_px_cat_g1v2.
+             - Expectation: Exact match (no lost rows during ingestion).
+
+          b) Whitespace Validation:
+             - Query: WHERE cat != TRIM(cat) OR subcat != TRIM(subcat) 
+                         OR maintenance != TRIM(maintenance);
+             - Expectation: 0 rows (no leading or trailing whitespace).
+
+          c) Domain Value Consistency Check:
+             - Confirmed distinct values for category, subcategory, and 
+               maintenance match expected reference categories.
+
+====================================================================

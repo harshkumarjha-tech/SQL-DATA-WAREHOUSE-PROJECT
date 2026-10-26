@@ -95,7 +95,7 @@ BEGIN
             TABLOCK
         );
         SET @end_time = GETDATE();
-        PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(millisecond, @start_time, @end_time) AS NVARCHAR) + ' ms';
         PRINT '--------------------';
 
         -- Load: crm_prd_info
@@ -112,7 +112,7 @@ BEGIN
             TABLOCK
         );
         SET @end_time = GETDATE();
-        PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(millisecond, @start_time, @end_time) AS NVARCHAR) + ' ms';
         PRINT '--------------------';
 
         -- Load: crm_sales_details
@@ -129,7 +129,7 @@ BEGIN
             TABLOCK
         );
         SET @end_time = GETDATE();
-        PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(millisecond, @start_time, @end_time) AS NVARCHAR) + ' ms';
         PRINT '--------------------';
 
         -- ============================================================================
@@ -153,7 +153,7 @@ BEGIN
             TABLOCK
         );
         SET @end_time = GETDATE();
-        PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(millisecond, @start_time, @end_time) AS NVARCHAR) + ' ms';
         PRINT '--------------------';
 
         -- Load: erp_loc_a101
@@ -170,7 +170,7 @@ BEGIN
             TABLOCK
         );
         SET @end_time = GETDATE();
-        PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(millisecond, @start_time, @end_time) AS NVARCHAR) + ' ms';
         PRINT '--------------------';
 
         -- Load: erp_px_cat_g1v2
@@ -187,7 +187,7 @@ BEGIN
             TABLOCK
         );
         SET @end_time = GETDATE();
-        PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(millisecond, @start_time, @end_time) AS NVARCHAR) + ' ms';
         PRINT '--------------------';
 
         -- Stop the overall batch timer
