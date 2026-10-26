@@ -2226,4 +2226,50 @@ EPIC 3: PROJECT INITIALIZATION
              - Confirmed distinct values for category, subcategory, and 
                maintenance match expected reference categories.
 
+  5.5 DOCUMENTING: Extend Data Flow (Draw.io)
+  --------------------------------------------------------------------
+
+      a) Extended Data Flow Diagram:
+         Extended the visual data flow architecture in Draw.io
+         (saved in Docs/), connecting the Bronze raw staging layer to
+         the Silver cleansed layer:
+         Source Flat Files -> Bronze Layer (Raw Ingestion / load_bronze) ->
+         Silver Layer (Cleansing, Standardization, Deduplication / load_silver).
+
+      b) Architectural Highlights Documented:
+         - Visualized the ETL pipeline transformations between Bronze and
+           Silver tiers.
+         - Captured primary-to-foreign key mappings across CRM and ERP systems
+           (e.g., crm_sales_details to crm_prd_info via prd_key;
+            crm_cust_info to erp_cust_az12 and erp_loc_a101 via cst_key/cid).
+         - Documented key transformation rules:
+           * Composite key split (cat_id and prd_key) and SCD Type 2 date logic.
+           * Deduplication of customer master records using ROW_NUMBER().
+           * Prefix ('NAS') and hyphen removal for unified customer linking.
+           * Mathematical derivation and cleaning of transactional sales measures.
+
+  5.6 COMMIT CODE IN GIT REPO
+  --------------------------------------------------------------------
+
+      All SQL scripts, validation tests, documentation, and data flow
+      diagrams for the Silver layer were committed and pushed to the
+      GitHub repository:
+
+      a) Files Committed:
+         - Silver DDL script:
+           Scripts/silver/Silver_Tables_DDL.sql
+         - Silver Data Load Stored Procedure:
+           Scripts/silver/Silver_Tables_DataLoad.sql
+         - Detailed Table ETL Scripts:
+           Scripts/silver/silver_details/Silver_Tables_DataLoad_*.sql
+         - Data Quality & Validation Scripts:
+           Scripts/silver/silver_details/Silver_Tables_DataValidationChecks_*.sql
+         - Architecture Diagrams:
+           Docs/Complete_data_flow.png, Docs/data_integration_diagram.png
+         - Data Warehousing Project Notes:
+           Data Warehousing Project.txt
+
+      b) Commit Message:
+         "feat: complete silver layer - DDL, transformations, stored procedure, validation & data flow documentation"
+
 ====================================================================
