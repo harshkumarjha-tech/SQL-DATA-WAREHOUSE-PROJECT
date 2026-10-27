@@ -2273,3 +2273,144 @@ EPIC 3: PROJECT INITIALIZATION
          "feat: complete silver layer - DDL, transformations, stored procedure, validation & data flow documentation"
 
 ====================================================================
+
+====================================================================
+6. BUILD THE GOLD LAYER
+====================================================================
+
+      We will do it step by step:
+      a) Analysing - Explore & Understand the Business Objects.
+      b) Coding - Data Integration:
+         b.1 Build the Business Objects.
+         b.2 Choose Schema Architecture (Dimension vs. Fact).
+         b.3 Rename columns to friendly business names.
+      c) Validating - Data Integration Checks.
+      d) Documenting & Versioning in Git:
+         d.1 Data Model (Star Schema).
+         d.2 Data Catalog.
+         d.3 Data Flow Diagram.
+
+   6.0 THEORETICAL FOUNDATION: DATA MODELING CONCEPTS
+   --------------------------------------------------------------------
+
+     6.0.1 What is Data Modeling?
+           Source systems typically provide raw data that is unorganized, 
+           messy, and not immediately useful in its current state. Data 
+           modeling is the structured process of taking this raw data and 
+           organizing it into a meaningful, intuitive, and high-performance 
+           analytical structure.
+
+           Key Principles of Data Modeling:
+           - We structure data into clean, business-friendly objects (entities) 
+             representing core business domains such as Customers, Orders, 
+             and Products.
+           - Each object focuses strictly on a specific domain of information.
+           - We define and establish the relationships between these objects 
+             by connecting them through primary and foreign keys (visualized 
+             as connecting lines in architectural diagrams).
+           - This network of interconnected entities forms the visual 
+             representation of a Logical Data Model.
+
+     6.0.2 The Three Levels of Data Modeling
+           There are three progressive stages of data modeling:
+
+           1. Conceptual Data Model:
+              - High-level perspective focusing purely on core business entities 
+                and the high-level relationships between them.
+              - Does not define technical details, table columns, or data types.
+
+           2. Logical Data Model:
+              - Detailed architectural view defining specific entity columns, 
+                primary keys, foreign keys, and relationship cardinalities.
+              - Platform-agnostic: does not concern itself with physical database 
+                storage mechanics, hardware, or database engine specifics.
+
+           3. Physical Data Model:
+              - Complete implementation specification designed for a specific 
+                relational database system (e.g., SQL Server).
+              - Details physical table structures, exact data types, constraints, 
+                indexes, storage considerations, and performance tuning.
+              - Project Note: In the Gold layer, we define our logical dimensional 
+                model and implement it physically through optimized SQL Views.
+
+     6.0.3 Star Schema vs. Snowflake Schema
+           For reporting and business intelligence (BI), analytics systems 
+           require a dimensional model optimized for query performance and 
+           ease of navigation:
+
+           a) Star Schema:
+              - Architecture: A central Fact table directly connected to and 
+                surrounded by denormalized Dimension tables (resembling a star).
+              - Key Characteristics:
+                * Simple, clean, and highly intuitive for analysts and BI tools.
+                * Requires fewer joins, delivering optimal read and query performance.
+                * Dimension tables are denormalized (contain redundant attributes), 
+                  meaning dimension tables can grow wider over time.
+              - Recommended for: Enterprise data marts and reporting dashboards.
+
+           b) Snowflake Schema:
+              - Architecture: A central Fact table surrounded by Dimension tables 
+                that are further normalized into sub-dimension tables (resembling 
+                a snowflake).
+              - Key Characteristics:
+                * Highly normalized structure that eliminates data redundancy.
+                * Reduces disk storage footprint, but requires complex multi-table 
+                  joins that can degrade query performance for BI reports.
+              - Recommended for: Specific scenarios with deep hierarchical data 
+                where storage conservation is critical.
+
+     6.0.4 Dimension Tables vs. Fact Tables
+           In dimensional modeling, datasets are categorized into two fundamental 
+           table types:
+
+           a) Dimension Tables (Dim Tables):
+              - Contain descriptive, textual attributes that provide rich business 
+                context to transactional events (e.g., customer demographics, 
+                product categories, store locations, dates).
+              - Characteristics: Wide (many descriptive columns), relatively static, 
+                and change slowly over time.
+              - Business Questions Answered: "Who?", "What?", "Where?", "When?", 
+                and "Why?".
+
+           b) Fact Tables (Fact Tables):
+              - Contain quantitative numerical measurements, metrics, and KPIs 
+                generated by business events (e.g., sales revenue, order quantity, 
+                unit price, discount applied).
+              - Characteristics: Narrow (fewer columns, composed mostly of foreign 
+                keys pointing to dimensions plus numeric measures) and grow rapidly 
+                with large row volumes.
+              - Business Questions Answered: "How much?" and "How many?".
+
+   6.1 ANALYSING - Explore Business Objects
+   --------------------------------------------------------------------
+
+       To identify the core Business Objects for our Gold layer, we label 
+       and group the Silver layer tables according to business domain:
+
+       a) PRODUCT:
+          - silver.crm_prd_info
+          - silver.erp_px_cat_g1v2
+
+       b) CUSTOMER:
+          - silver.crm_cust_info
+          - silver.erp_cust_az12
+          - silver.erp_loc_a101
+
+       c) SALES:
+          - silver.crm_sales_details
+
+   6.2 CODING - Data Integration
+   --------------------------------------------------------------------
+
+     6.2.1 Building Dimension Views (gold.dim_customers)
+           In the Gold layer, we implement our dimensional model using SQL Views 
+           rather than physical tables:
+           - Zero Storage Overhead: Views are virtual queries that consume no 
+             additional physical storage space.
+           - Real-Time Data Freshness: Views query the Silver tables dynamically, 
+             automatically reflecting upstream data transformations without 
+             requiring a separate ETL reload schedule.
+           - Business-Friendly Interface: Views present clean, standardized, 
+             and intuitive column aliases tailored directly for BI dashboards 
+             and business users.
+
